@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- <html style="text-align: center;"> -->
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>EncryptionApp</title>
+    <link rel="stylesheet" href="{{ url_for('static',filename='assets/bootstrap/css/bootstrap.min.css') }}">
+    <!-- <link rel="stylesheet" href="{{ url_for('static',filename='assets/css/styles.css') }}"> -->
+    <script src="http://d3js.org/d3.v6.min.js"></script>
+    <script src="{{ url_for('static',filename='assets/js/d3plot.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static',filename='assets/js/frontend.js') }}" charset="utf-8"></script>
+</head>
+
+<body>
+    <h1 style="text-align: center;">FileEncryptionApp</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                {{messages[0]}}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- File upload -->
+    <div class='card'>
+        <div class="card-body">
+            <div class='container'>
+                <div class='row'>
+                    <div class="col-md-6">
+                        <form method=get>
+                            {% if if_encode %}
+                                <input type=submit value="Encode" formaction="set_mode">
+                            {% else %}
+                                <input type=submit value="Decode" formaction="set_mode">
+                            {% endif %}
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <form method=get>
+                            <input type=submit value="Generate key" formaction="generate_new_key">
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class='card'>
+        <div class="card-body">
+            <div class='container'>
+                <div class='row'>
+                    <div class='col-md-6'>
+                        <form method=post enctype=multipart/form-data>
+                            <input type=file name="file[]" multiple="" style="text-align: center;">
+                            <input type=submit value=Upload>
+                        </form>
+                    </div>
+                    {% if encode_step == 4 or (not if_encode and encode_step == 3) %}
+
+                        
+                        <div class='col-md-6'>
+                            {% if if_encode %}
+                                <input type="button" data-toggle="modal" data-target="#exampleModal" value=Download>
+                            {% else %}
+                                <form method=post action='download'>
+                                    <input type="submit" value=Download>
+                                </form>
+                            {% endif %}
+                        </div>
+
+                        <!-- popup modal for uploading key file -->                    
+                        <!-- Modal -->
+                        <div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                <h5 class="modal-title" id="exampleModalLabel">Upload key file</h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                                </div>
+
+                                <form method=post enctype=multipart/form-data action='download'>
+                                    <div class="modal-body"> <!-- a form for uploading key file -->
+                                        <input type=file name="file" style="text-align: center;">
+                                    </div>
+                                    <div class="modal-footer">
+                                        <input type="submit" name="submit_button" value="Download without encryption">
+                                        <input type="submit" name="submit_button" value="Encrypt and download">
+                                    </div>
+                                </form>
+                            </div>
+                            </div>
+                        </div>
+
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class='card'>
+        <div class="card-body">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        {% if encode_step == 2 or encode_step == 3 or encode_step == 4%}
+                        <ul class="nav nav-tabs">
+                            {% for sample in samples %}
+                                {% if loop.index == 1 %}
+                                    {% set class_content = 'nav-link active' %}
+                                {% else %}
+                                    {% set class_content = 'nav-link' %}
+                                {% endif %}
+                                <li class="nav-item">
+                                    <a data-toggle='tab' class={{class_content}} id={{'nav-%d' % loop.index}} href={{'#tab-%d' % loop.index}} aria-controls={{'tab-%d' % loop.index}}>{{sample_names[loop.index-1]}}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+
+                        {% if encode_step == 2 %}
+                        <form method=post action='join_table'>
+                            <div class="tab-content">
+                                {% for sample in samples %}
+                                    {% set outer_loop = loop %}
+                                    {% if loop.index == 1 %}
+                                        {% set class_content = 'tab-pane fade show active' %}
+                                    {% else %}
+                                        {% set class_content = 'tab-pane fade' %}
+                                    {% endif %}
+                                    <div role="tabpanel" id={{'tab-%d' % loop.index}} aria-labelledby={{'nav-%d' % loop.index}} class="{{class_content}}">
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            {% if error_message %}
+                                                <caption>{{error_message}}</caption>
+                                            {% else %}
+                                                <caption>select which columns to join</caption>
+                                            {% endif %}
+                                            <thead>
+                                                <tr>
+                                                    {% for column_name in sample[0] %}
+                                                        <th>                                             
+                                                            <div class="form-check form-check-inline">
+                                                                <input
+                                                                class="form-check-input"
+                                                                type="radio"
+                                                                name={{'join_columns-%d' % outer_loop.index}}
+                                                                id="inlineRadio1"
+                                                                value={{column_name}}
+                                                                />
+                                                                <label class="form-check-label" for="inlineRadio1">{{column_name}}</label>
+                                                            </div>
+                                                        </th>
+                                                    {% endfor %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for row in sample[1] %}
+                                                    <tr>
+                                                        {% for column_value in row %}
+                                                            <td> {{column_value}} </td>
+                                                        {% endfor %}
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+
+                            <input type="submit" value="submit" >
+                        </form>
+                        {% endif %}
+
+                        {% if encode_step == 3 or encode_step == 4%}
+                        <form method=post action='adjust_encoding_level'>
+                            <div class="tab-content">
+                                {% for sample in samples %}
+                                    {% set outer_loop = loop %}
+                                    {% if loop.index == 1 %}
+                                        {% set class_content = 'tab-pane fade show active' %}
+                                    {% else %}
+                                        {% set class_content = 'tab-pane fade' %}
+                                    {% endif %}
+                                    <div role="tabpanel" id={{'tab-%d' % loop.index}} aria-labelledby={{'nav-%d' % loop.index}} class="{{class_content}}">
+
+                                        {% if if_encode %}
+                                            {% if encoding_levels %}
+                                                {% set slider_show_value = encoding_levels[loop.index - 1]%}
+                                            {% else %}
+                                                {% set slider_show_value = 0%}
+                                            {% endif %}
+                                            <input type="range" min="0" max="10" value={{slider_show_value}} class="slider" id="{{'rangeInput-%d' % (outer_loop.index)}}" name="{{'encoding_level-%d' % outer_loop.index}}" style="text-align: center;" oninput="this.nextElementSibling.value = this.value">
+                                            <output id="{{'amount-%d' % (outer_loop.index)}}" name="{{'amount-%d' % (outer_loop.index)}}" for="{{'rangeInput-%d' % (outer_loop.index)}}">{{slider_show_value}}</output>
+                                            
+                                        {% endif %}
+                                        <div class="table-responsive">
+                                            <table class="table">
+                                                <!-- <caption>0: date; 1: int; 2: float; 3: str</caption> -->
+                                                {% set options = [0, 1, 2, 3] %}
+                                                {% set option_content = ['date', 'int', 'float', 'string'] %}
+                                                <thead>
+                                                    <tr>
+                                                        {% for column_name in sample[0] %}
+                                                            {% set column_index = loop.index - 1 %}
+                                                            <th> 
+                                                                {{column_name}}
+                                                                {% if if_encode %}
+                                                                    <select class="form-control" style="width:auto;" name="{{'column_types-%d:%s' % (outer_loop.index - 1, column_name)}}">
+                                                                        {% for option in options %}
+                                                                            {% if option == column_types[outer_loop.index - 1][column_index] %}
+                                                                                <option value="{{option}}" selected>{{option_content[option]}}</option>
+                                                                            {% else %}
+                                                                            <option value="{{option}}">{{option_content[option]}}</option>
+                                                                            {% endif %}
+                                                                        {% endfor %}
+                                                                    </select>
+                                                                {% endif %}
+                                                            </th>
+                                                        {% endfor %}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for row in sample[1] %}
+                                                        <tr>
+                                                            {% for column_value in row %}
+                                                                <td> {{column_value}} </td>
+                                                            {% endfor %}
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        {% if if_encode and plot_column_flags %}
+                                            {% for column_name in sample[0] %}
+                                                {% if column_types[loop.index - 1] == 2 %}
+                                                    <div class="form-check form-check-inline">
+                                                        {% if plot_column_flags[outer_loop.index - 1][loop.index - 1] == 1 %}
+                                                            <input class="form-check-input" type="checkbox" id="inlineCheckbox1" name={{'plot_legends-%s'%(loop.index - 1)}} value="plot_legends" checked>
+                                                        {% else %}
+                                                            <input class="form-check-input" type="checkbox" id="inlineCheckbox1" name={{'plot_legends-%s'%(loop.index - 1)}} value="plot_legends">
+                                                        {% endif %}
+                                                        <label class="form-check-label" for="inlineCheckbox1">{{column_name}}</label>
+                                                    </div>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% if if_encode %}
+                                <input type="submit" value="submit">
+                            {% endif %}
+                        </form>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+
+                        {% if encode_step == 4%}
+                            <ul class="nav nav-tabs">
+                                {% for sample in encoded_samples %}
+                                    {% if loop.index == 1 %}
+                                        {% set class_content = 'nav-link active' %}
+                                    {% else %}
+                                        {% set class_content = 'nav-link' %}
+                                    {% endif %}
+                                    <li class="nav-item">
+                                        <a data-toggle='tab' class={{class_content}} id={{'nav-right-%d' % loop.index}} href={{'#tab-right-%d' % loop.index}} aria-controls={{'tab-%d' % loop.index}}>{{sample_names[loop.index-1]}}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+
+                            <div class="tab-content">
+                                {% for encoded_sample in encoded_samples %}
+                                    {% set outer_loop = loop %}
+                                    {% if loop.index == 1 %}
+                                        {% set class_content = 'tab-pane fade show active' %}
+                                    {% else %}
+                                        {% set class_content = 'tab-pane fade' %}
+                                    {% endif %}
+                                    <div role="tabpanel" id={{'tab-right-%d' % loop.index}} aria-labelledby={{'nav-right-%d' % loop.index}} class="{{class_content}}">
+                            
+                                        <div class="table-responsive">
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        {% for column_name in encoded_sample[0] %}
+                                                            <th> {{column_name}} </th>
+                                                        {% endfor %}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for row in encoded_sample[1] %}
+                                                        <tr>
+                                                            {% for column_value in row %}
+                                                                <td> {{column_value}} </td>
+                                                            {% endfor %}
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class='card'>
+        <div class="card-body">
+            <div class="container">
+                {% if encode_step == 4%}
+                    <ul class="nav nav-tabs">
+                        {% for sample in samples %}
+                            {% if loop.index == 1 %}
+                                {% set class_content = 'nav-link active' %}
+                            {% else %}
+                                {% set class_content = 'nav-link' %}
+                            {% endif %}
+                            <li class="nav-item">
+                                <a data-toggle='tab' class={{class_content}} id={{'plot-nav-%d' % loop.index}} href={{'#plot-tab-%d' % loop.index}} aria-controls={{'plot-tab-%d' % loop.index}}>{{sample_names[loop.index-1]}}</a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="tab-content">
+                        {% for sample in samples %}
+                            {% set outer_loop = loop %}
+                            {% if loop.index == 1 %}
+                                {% set class_content = 'tab-pane fade show active' %}
+                            {% else %}
+                                {% set class_content = 'tab-pane fade' %}
+                            {% endif %}
+                            <div role="tabpanel" id={{'plot-tab-%d' % loop.index}} aria-labelledby={{'plot-nav-%d' % loop.index}} class="{{class_content}}">
+                                {% set raw_plot = data[loop.index - 1][0] %}
+                                {% set raw_node_name = '#rawGraph-%d' % loop.index %}
+                                {% set encoded_plot = data[loop.index - 1][1] %}
+                                {% set encoded_node_name = '#encodedGraph-%d' % loop.index %}
+                                <button name="plotBtn" onclick="draw({{raw_plot}}, '{{raw_node_name}}'); draw({{encoded_plot}}, '{{encoded_node_name}}');">Plot</button>
+                            
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="table-responsive">
+                                            <div id={{'rawGraph-%d' % outer_loop.index}}></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="table-responsive">
+                                            <div id={{'encodedGraph-%d' % outer_loop.index}}></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                {% endif %}
+                
+                <!-- <div class="row">
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <div id='rawGraph'></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <div id='encodedGraph'></div>
+                        </div>
+                    </div>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+    <!-- {% if data %}
+    <script>
+        draw({{ data.raw_data | safe }}, "#rawGraph")
+        draw({{ data.encoded_data | safe }}, "#encodedGraph")
+    </script>
+    {% endif %} -->
+
+    <script src="{{ url_for('static',filename='assets/js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/bootstrap/js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js/d3plot.js') }}" charset="utf-8"></script>
+    <!-- <script src="{{ url_for('static',filename='assets/js/table_drag.js') }}"></script> -->
+</body>
+
+</html>

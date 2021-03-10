@@ -1,0 +1,25 @@
+.box {
+    border: 1px solid #666;
+    background-color: #ddd;
+    border-radius: .5em;
+    width: 100px;
+    height: 35px;
+    cursor: move;
+}
+  
+.box.over {
+    border: 3px dotted #666;
+}
+
+[draggable] {
+    user-select: none;
+}
+
+/* #div_date, #div_int, #div_float, #div_string {
+    float: left;
+    width: 150px;
+    height: 100px;
+    margin: 10px;
+    padding: 10px;
+    border: 1px solid black;
+} */

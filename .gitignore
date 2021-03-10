@@ -1,0 +1,7 @@
+sample_data/
+*.csv
+*.txt
+*.zip
+*.pyc
+*files/
+*.key
