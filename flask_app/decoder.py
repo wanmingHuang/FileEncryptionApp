@@ -94,13 +94,12 @@ def read_mapping(filenames, target_dir):
     return mapping
 
 
-def decode_file(zipfilename, target_dir):
+def decode_file(zipfilename, target_dir, key):
     # unzip the directory for 1. zipped csc; 2. mapping files
     unzip_file(zipfilename, target_dir)
     target_dir = os.path.join(target_dir, zipfilename.split('/')[-1].replace('.zip', ''))
 
     # assume 1 zip file for csvs
-    key = None
     mapping_files = {}
     for file_name in os.listdir(target_dir):
         if 'zip' in file_name: # tables

@@ -65,6 +65,8 @@ def table2json(table_data):
     if table_data.shape[0] > 200:
         table_data = table_data.sample(n=200)
 
+    table_data = table_data.reset_index(drop=True)
+
     return table_data.to_json(date_unit='ns')
 
 
@@ -73,6 +75,7 @@ def set_mode():
     """
         set the mode to be encode or decode
     """
+    app.config['key'] = None
     reset_folders()
     app.config['IF_ENCODE'] = not app.config['IF_ENCODE']
 
@@ -139,9 +142,9 @@ def upload_file():
         else: # decode
             # assume only upload 1 zip for decode
             try:
-                decoded_tables, decode_file_paths, download_file_path = decoder.decode_file(app.config['FILE_PATH'][0], app.config['DECODE_FOLDER'])
+                decoded_tables, decode_file_paths, download_file_path = decoder.decode_file(app.config['FILE_PATH'][0], app.config['DECODE_FOLDER'], app.config['key'])
             except Exception as e:
-                flash('error occurs: ' + str(e) + ', please upload another' )
+                flash('error occurs: ' + str(e) + ', please upload key file' )
                 return render_template('index.html',
                             if_encode=app.config['IF_ENCODE']
                 )
@@ -336,6 +339,20 @@ def download():
         zipfilepath = app.config['DOWNLOAD_FILE_PATH']
 
     return send_file(zipfilepath, as_attachment=True, cache_timeout=0)
+
+
+@app.route("/upload_key", methods=["POST"])
+def upload_key():
+    print(list(request.files.keys()), '!!!')
+    if request.files['file'].filename == '':
+        flash('No key file uploaded, key is unused')
+        key = None
+    else:
+        key = request.files['file'].read()
+        app.config['key'] = key
+        flash("key is uploaded")
+    return redirect('/')
+
 
 if __name__ == "__main__":
     app.run()

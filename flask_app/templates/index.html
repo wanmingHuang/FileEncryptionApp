@@ -42,9 +42,42 @@
                         </form>
                     </div>
                     <div class="col-md-6">
-                        <form method=get>
-                            <input type=submit value="Generate key" formaction="generate_new_key">
-                        </form>
+                        {% if if_encode %}
+                            <form method=get>
+                                <input type=submit value="Generate key" formaction="generate_new_key">
+                            </form>
+                        {% else %}
+                            <input type="button" data-toggle="modal" data-target="#keyModal" value="Upload key">
+
+                            <!-- popup modal for uploading key file -->                    
+                            <!-- Modal -->
+                            <div class="modal fade" id="keyModal" tabindex="-1" role="dialog" aria-labelledby="keyModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                    <h5 class="modal-title" id="keyModalLabel">Upload key file</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                    </div>
+
+                                    <form method=post enctype=multipart/form-data action='upload_key'>
+                                        <div class="modal-body"> <!-- a form for uploading key file -->
+                                            <input type=file name="file" style="text-align: center;">
+                                        </div>
+                                        <div class="modal-footer">
+                                            <input type="submit" name="" value="Cancel">
+                                            <input type="submit" name="submit_button" value="Upload">
+                                        </div>
+                                    </form>
+                                </div>
+                                </div>
+                            </div>
+
+                            <!-- <form method=post>
+                                <input type=submit value="Upload key" formaction="generate_new_key">
+                            </form> -->
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -198,8 +231,21 @@
                                             {% else %}
                                                 {% set slider_show_value = 0%}
                                             {% endif %}
-                                            <input type="range" min="0" max="10" value={{slider_show_value}} class="slider" id="{{'rangeInput-%d' % (outer_loop.index)}}" name="{{'encoding_level-%d' % outer_loop.index}}" style="text-align: center;" oninput="this.nextElementSibling.value = this.value">
-                                            <output id="{{'amount-%d' % (outer_loop.index)}}" name="{{'amount-%d' % (outer_loop.index)}}" for="{{'rangeInput-%d' % (outer_loop.index)}}">{{slider_show_value}}</output>
+
+                                            <!-- {% if slider_show_value == 0 %}
+                                                {% set slider_explanation = 'do nothing' %}
+                                            {% elif slider_show_value == 1 %}
+                                                {% set slider_explanation = 'encode column names' %}
+                                            {% elif slider_show_value == 2 %}
+                                                {% set slider_explanation = 'encode string values' %}
+                                            {% else %}
+                                                {% set slider_explanation = 'encode float values' %}
+                                            {% endif %} -->
+
+                                            {% set slider_explantions = ['0: do nothing', '1: encode column names', '2: encode string values', '3: encode float values', '4: encode float values', '5: encode float values', '6: encode float values', '7: encode float values', '8: encode float values', '9: encode float values', '10: encode float values'] %}
+
+                                            <input type="range" min="0" max="10" value={{slider_show_value}} class="slider" id="{{'rangeInput-%d' % (outer_loop.index)}}" name="{{'encoding_level-%d' % outer_loop.index}}" style="text-align: center;" oninput="this.nextElementSibling.value = {{slider_explantions}}[this.value]">
+                                            <output id="{{'amount-%d' % (outer_loop.index)}}" name="{{'amount-%d' % (outer_loop.index)}}" for="{{'rangeInput-%d' % (outer_loop.index)}}">{{slider_show_value}} {{slider_explanation}}</output>
                                             
                                         {% endif %}
                                         <div class="table-responsive">

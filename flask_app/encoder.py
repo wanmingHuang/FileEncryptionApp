@@ -292,6 +292,7 @@ def read_and_encode_data(file_path, target_dir, date_columns, float_columns, str
     mapping_file_list = write_mapping(mapping_data, target_dir, file_name)
 
     # write encoded data to file
+    
     encoded_file_name = os.path.join(target_dir, 'encoded_{}'.format(file_name))
     encoded_data.to_csv(encoded_file_name, index=None)
 
