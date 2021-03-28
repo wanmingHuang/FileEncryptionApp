@@ -11,6 +11,8 @@ import numpy as np
 import json
 import shutil
 import secrets
+import ops
+import encryption
 
 UPLOAD_FOLDER = 'uploaded_files/'
 ENCODE_FOLDER = 'encoded_files/'
@@ -39,6 +41,7 @@ app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # maxinum size of uploade
 app.config['DEBUG'] = True
 
 app.config['IF_ENCODE'] = True
+app.config['key'] = None
 
 app.secret_key = secrets.token_urlsafe(16)
 app.config['SESSION_TYPE'] = 'filesystem'
@@ -54,6 +57,22 @@ def allowed_file(filename):
             filename.rsplit('.', 1)[1].lower() in {'zip', 'txt', 'py'}
 
 
+def collect_uploaded_files(uploaded_files):
+    """
+        collect flask uploaded files
+    """
+    file_paths = []
+    sample_names = []
+    for file in uploaded_files:
+        if allowed_file(file.filename): # read each file
+            filename = secure_filename(file.filename)
+            sample_names.append(filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path) # save file to server
+            file_paths.append(file_path)
+    return file_paths, sample_names
+
+
 def table2json(table_data):
     """
         a pandas data frame to json
@@ -67,7 +86,6 @@ def table2json(table_data):
         table_data = table_data.sample(n=200)
 
     table_data = table_data.reset_index(drop=True)
-    print(table_data.head())
 
     return table_data.to_json(date_unit='ns')
 
@@ -83,104 +101,174 @@ def set_mode():
 
     return redirect('/')
 
-    # return render_template('index.html',
-    #                         if_encode=app.config['IF_ENCODE']
-    # )
+
+def process_uploaded_files():
+    reset_folders()
+    uploaded_files = request.files.getlist("file[]")
+
+    if len(uploaded_files) == 0:
+        flash('No selected file')
+        return redirect(request.url)
+
+    file_paths, sample_names = collect_uploaded_files(uploaded_files)
+    if len(file_paths) == 0: # no correct format files are uploaded
+        flash('Incorrect file format, please reupload')
+        return redirect(request.url)
+
+    app.config['FILE_PATH'] = file_paths
+    app.config['NUM_TABLES'] = len(sample_names)
+    return sample_names
+
+
+@app.route('/encode_tables', methods=['GET', 'POST'])
+def encode_tables():
+    app.config['IF_ENCODE'] = True
+    if request.method == 'GET':
+        return render_template('table_encoder.html',
+                            if_encode=app.config['IF_ENCODE'],
+                            encode_step=1)
+    else:
+        sample_names = process_uploaded_files()
+
+        samples = []
+        all_column_types = []
+        for file_path in app.config['FILE_PATH']:
+            raw_data, column_types = encoder.read_data(file_path, [])
+            raw_column_names, raw_cell_values = encoder.extract_sample(raw_data)
+            samples.append([raw_column_names, raw_cell_values])
+            all_column_types.append(column_types)
+
+        encode_step = 2 if len(samples) > 1 else 3
+        column_types = [] if len(samples) > 1 else all_column_types
+
+        return render_template('table_encoder.html',
+                            samples=samples,
+                            sample_names=sample_names,
+                            if_encode=app.config['IF_ENCODE'],
+                            column_types=all_column_types,
+                            encode_step=encode_step)
+
+
+@app.route('/encrypt_data', methods=['GET', 'POST'])
+def encrypt_data():
+    """
+        This is a standalone function that encrypts data
+    """
+    app.config['PAGE'] = 'encrypt_data'
+    if request.method == 'GET':
+        return render_template('encryption.html')
+    else:
+        app.config['IF_ENCODE'] = False
+        # assume only 1 file is uploaded
+        process_uploaded_files()
+        if app.config['key'] is None:
+            flash('Pleae upload a key to encrypt')
+            return render_template('encryption.html')
+        else:
+            encryption.encrypt_file(app.config['FILE_PATH'][0], key=app.config['key'])
+            app.config['DOWNLOAD_FILE_PATH'] = app.config['FILE_PATH'][0]
+            return render_template('encryption.html', downloadable=True)
+
+
+@app.route('/decrypt_data', methods=['GET', 'POST'])
+def decrypt_data():
+    """
+        This is a standalone function that encrypts data
+    """
+    app.config['PAGE'] = 'decrypt_data'
+    if request.method == 'GET':
+        return render_template('decryption.html')
+    else:
+        app.config['IF_ENCODE'] = False
+        # assume only 1 file is uploaded
+        process_uploaded_files()
+        if app.config['key'] is None:
+            flash('Pleae upload a key to decrypt')
+            return render_template('decryption.html')
+        else:
+            encryption.decrypt_file(app.config['FILE_PATH'][0], key=app.config['key'])
+            app.config['DOWNLOAD_FILE_PATH'] = app.config['FILE_PATH'][0]
+            return render_template('decryption.html', downloadable=True)
+
+
+@app.route('/decode_tables', methods=['GET','POST'])
+def decode_tables():
+    app.config['PAGE'] = 'decode_tables'
+    app.config['IF_ENCODE'] = False
+    if 'key' not in app.config.keys():
+        app.config['key'] = None
+    if request.method == 'GET':
+        return render_template('table_decoder.html',
+                                if_encode=app.config['IF_ENCODE'],
+                                encode_step=1)
+    else:
+        sample_names = process_uploaded_files()
+        try:
+            decoded_tables, decode_file_paths, download_file_path = decoder.decode_file(
+                app.config['FILE_PATH'][0], app.config['DECODE_FOLDER'], app.config['key'])
+        except Exception as e:
+            flash('Error: ' + str(e))
+            return render_template('table_decoder.html',
+                                if_encode=app.config['IF_ENCODE'],
+                                encode_step=1)
+
+        app.config['DOWNLOAD_FILE_PATH'] = download_file_path
+
+        if decoded_tables is not None: # i.e. a decoded csv
+            # extract sample from table to show on the webpage
+            samples = []
+            sample_names = [file_path.split('/')[-1] for file_path in decode_file_paths]
+            for decoded_data in decoded_tables:
+                raw_column_names, raw_cell_values = encoder.extract_sample(decoded_data)
+                samples.append([raw_column_names, raw_cell_values])
+
+            # convert raw data and encoded data to json to be plotted
+            # data = {'raw_data': table2json(decoded_data)}
+
+            return render_template('table_decoder.html',
+                                    if_encode=app.config['IF_ENCODE'],
+                                    column_types=[],
+                                    samples=samples,
+                                    sample_names=sample_names,
+                                    encode_step = 3)
+
+
+@app.route('/decode_reports', methods=['GET','POST'])
+def decode_reports():
+    app.config['PAGE'] = 'decode_reports'
+    app.config['IF_ENCODE'] = False
+    if 'key' not in app.config.keys():
+        app.config['key'] = None
+    if request.method == 'GET':
+        return render_template('report_decoder.html',
+                                report="")
+    else:
+        sample_names = process_uploaded_files()
+        try:
+            decoded_report, decoded_file_path = text_decoder.decode_file(
+                app.config['FILE_PATH'][0], app.config['DECODE_FOLDER'], app.config['key'])
+        except Exception as e:
+            flash('Error: ' + str(e))
+            return render_template('report_decoder.html', report="")
+        app.config['DOWNLOAD_FILE_PATH'] = decoded_file_path
+
+        return render_template('report_decoder.html',
+                                report = decoded_report,
+                                downloadable = True)
 
 
 @app.route('/', methods=['GET','POST'])
-def upload_file():
+def root():
     reset_folders()
-
-    uploaded_files = request.files.getlist("file[]")
+    app.config['key'] = None
 
     if request.method == 'POST':
-        # if user does not select file, browser also
-        # submit an empty part without filename
-        if len(uploaded_files) == 0:
-            flash('No selected file')
-            return redirect(request.url)
+        app.config['ROLE'] = request.form['role']
 
-        file_paths = []
-        sample_names = []
-        for file in uploaded_files:
-            if allowed_file(file.filename): # read each file
-                filename = secure_filename(file.filename)
-                sample_names.append(filename)
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(file_path) # save file to server
-                file_paths.append(file_path)
-
-        if len(file_paths) == 0: # no correct format files are uploaded
-            flash('Incorrect file format, please reupload')
-            return redirect(request.url)
-
-        app.config['FILE_PATH'] = file_paths
-        app.config['NUM_TABLES'] = len(sample_names)
-
-        if app.config['IF_ENCODE'] is True: # encode
-            samples = []
-            all_column_types = []
-            for file_path in app.config['FILE_PATH']:
-                raw_data, column_types = encoder.read_data(file_path, [])
-                raw_column_names, raw_cell_values = encoder.extract_sample(raw_data)
-                samples.append([raw_column_names, raw_cell_values])
-                all_column_types.append(column_types)
-
-            if len(samples) > 1: # maybe join tables
-                return render_template('index.html',
-                                        samples=samples,
-                                        sample_names=sample_names,
-                                        if_encode=app.config['IF_ENCODE'],
-                                        encode_step = 2)
-            else: # set single table data types
-                # data = {'raw_data': table2json(raw_data)}
-                return render_template('index.html',
-                                    samples=samples,
-                                    sample_names=sample_names,
-                                    if_encode=app.config['IF_ENCODE'],
-                                    column_types=all_column_types,
-                                    encode_step = 3)
-        else: # decode
-            # assume only upload 1 zip for decode
-            # try:
-            
-            if ".zip" in app.config['FILE_PATH'][0]: # decode tables
-                decoded_tables, decode_file_paths, download_file_path = decoder.decode_file(
-                    app.config['FILE_PATH'][0], app.config['DECODE_FOLDER'], app.config['key'])
-                # except Exception as e:
-                #     flash('error occurs: ' + str(e) + ', please upload key file or reupload' )
-                #     return render_template('index.html',
-                #                 if_encode=app.config['IF_ENCODE']
-                #     )
-
-                app.config['DOWNLOAD_FILE_PATH'] = download_file_path
-
-                if decoded_tables is not None: # i.e. a decoded csv
-                    # extract sample from table to show on the webpage
-                    samples = []
-                    sample_names = [file_path.split('/')[-1] for file_path in decode_file_paths]
-                    for decoded_data in decoded_tables:
-                        raw_column_names, raw_cell_values = encoder.extract_sample(decoded_data)
-                        samples.append([raw_column_names, raw_cell_values])
-
-                    # convert raw data and encoded data to json to be plotted
-                    # data = {'raw_data': table2json(decoded_data)}
-
-                    return render_template('index.html',
-                                if_encode=app.config['IF_ENCODE'],
-                                column_types=[],
-                                samples=samples,
-                                sample_names=sample_names,
-                                encode_step = 3
-                    )
-            else: # decode report or code
-                text_decoder.main(app.config['FILE_PATH'][0], app.config['DECODE_FOLDER'])
-
-
-    return render_template('index.html',
-                            if_encode=app.config['IF_ENCODE']
-    )
+    if 'ROLE' not in app.config.keys() or app.config['ROLE'] is None:
+        return render_template('navigator.html')
+    else:
+        return render_template('navigator.html', role=app.config['ROLE'])
 
 
 @app.route("/generate_new_key", methods=["GET", "POST"])
@@ -201,6 +289,13 @@ def join_table():
     if len(join_columns) > 1: # join columns, and proceed to choose data types
         try:
             raw_data, file_path, column_types = encoder.read_join_tables(app.config['UPLOAD_FOLDER'], join_columns)
+            app.config['NUM_TABLES'] = 1
+            app.config['FILE_PATH'] = [file_path]
+            raw_column_names, raw_cell_values = encoder.extract_sample(raw_data)
+            encode_step = 3
+            samples=[[raw_column_names, raw_cell_values]]
+            sample_names=[file_path.split('/')[-1]]
+            error_message=""
         except Exception as e: # catch exception if key supplied is wrong
             samples = []
             sample_names = []
@@ -209,36 +304,21 @@ def join_table():
                 raw_column_names, raw_cell_values = encoder.extract_sample(raw_data)
                 samples.append([raw_column_names, raw_cell_values])
                 sample_names.append(file_path.split("/")[-1])
-
-            if len(samples) > 1: # maybe join tables
-                return render_template('index.html',
-                                        samples=samples,
-                                        sample_names=sample_names,
-                                        if_encode=app.config['IF_ENCODE'],
-                                        error_message="error in column selection",
-                                        encode_step=2)   
-            
-        app.config['NUM_TABLES'] = 1
-        app.config['FILE_PATH'] = [file_path]
-        raw_column_names, raw_cell_values = encoder.extract_sample(raw_data)
-        return render_template('index.html',
-                                if_encode=app.config['IF_ENCODE'],
-                                samples=[[raw_column_names, raw_cell_values]],
-                                sample_names=[file_path.split('/')[-1]],
-                                column_types=[column_types],
-                                encode_step=3
-        )    
+            encode_step = 2
+        column_types=[column_types]
 
     else: # do not join columns, for each table, choose data types
-        all_table_data, all_column_types, samples, sample_names, file_paths = encoder.read_tables(app.config['UPLOAD_FOLDER'])
+        all_table_data, column_types, samples, sample_names, file_paths = encoder.read_tables(app.config['UPLOAD_FOLDER'])
         app.config['FILE_PATH'] = file_paths
-        return render_template('index.html',
-                                if_encode=app.config['IF_ENCODE'],
-                                samples=samples,
-                                sample_names=sample_names,
-                                column_types=all_column_types,
-                                encode_step=3
-        )     
+        encode_step = 3
+    
+    return render_template('table_encoder.html',
+                            if_encode=app.config['IF_ENCODE'],
+                            samples=samples,
+                            sample_names=sample_names,
+                            column_types=column_types,
+                            encode_step=encode_step,
+                            error_message="")
 
 
 @app.route("/adjust_encoding_level", methods=["POST"])
@@ -248,8 +328,8 @@ def adjust_encoding_level():
 
         encode table with the updated slider
     """
-    print(list(request.form.keys()))
-    print("="*80)
+    # print(list(request.form.keys()))
+    # print("="*80)
 
     encoding_levels = []
 
@@ -318,7 +398,7 @@ def adjust_encoding_level():
         data.append([table2json(raw_data.iloc[:, plot_column_indexes[i]]), table2json(encoded_data.iloc[:, plot_column_indexes[i]])])
     
     # show tables and show plot
-    return render_template('index.html',
+    return render_template('table_encoder.html',
                             if_encode=app.config['IF_ENCODE'],
                             samples=samples,
                             sample_names=sample_names,
@@ -358,7 +438,7 @@ def upload_key():
         key = request.files['file'].read()
         app.config['key'] = key
         flash("key is uploaded")
-    return redirect('/')
+    return redirect(app.config['PAGE'])
 
 
 if __name__ == "__main__":

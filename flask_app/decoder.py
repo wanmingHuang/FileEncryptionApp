@@ -39,13 +39,14 @@ def decode_table(file_path, mapping):
     table_data = pd.read_csv(file_path)
     column_names = list(table_data.columns)
 
-    # decode_row_values
-    for column_name, column_dict in mapping['rows'].items():
-        encoded_column_values = table_data[column_name].values
-        table_data[column_name] = [mapping['rows'][column_name][el] for el in encoded_column_values]
+    if mapping is not None:
+        # decode_row_values
+        for column_name, column_dict in mapping['rows'].items():
+            encoded_column_values = table_data[column_name].values
+            table_data[column_name] = [mapping['rows'][column_name][el] for el in encoded_column_values]
 
-    # decode column names
-    table_data.columns = [mapping['columns'][name] for name in column_names]
+        # decode column names
+        table_data.columns = [mapping['columns'][name] for name in column_names]
 
     # return the decoded table
     return table_data
@@ -95,9 +96,11 @@ def read_mapping(filenames, target_dir):
 
 
 def decode_file(zipfilename, target_dir, key):
-    # unzip the directory for 1. zipped csc; 2. mapping files
+    # unzip the directory for 1. zipped csv; 2. mapping files
     unzip_file(zipfilename, target_dir)
-    target_dir = os.path.join(target_dir, zipfilename.split('/')[-1].replace('.zip', ''))
+
+    unzipped_dir = [name for name in os.listdir(target_dir) if os.path.isdir(os.path.join(target_dir, name)) and "__" not in name][0]
+    target_dir = os.path.join(target_dir, unzipped_dir)
 
     # assume 1 zip file for csvs
     mapping_files = {}
@@ -121,11 +124,18 @@ def decode_file(zipfilename, target_dir, key):
 
     decoded_tables = []
     file_paths = []
-    for sample_name in mapping_files.keys():
-        mapping = read_mapping(mapping_files[sample_name], os.path.join(target_dir, "../"))
+
+    sample_names = [file_name.replace('.csv','').replace('encoded_','') for file_name in os.listdir(target_dir) if '.csv' in file_name]
+    
+    for sample_name in sample_names:
+        if sample_name not in mapping_files.keys():
+            mapping = None
+        else:
+            mapping = read_mapping(mapping_files[sample_name], os.path.join(target_dir, "../"))
 
         encoded_file_name = os.path.join(target_dir, 'encoded_'+sample_name+'.csv')
         table_data = decode_table(encoded_file_name, mapping)
+
         # save decoded table to directory
         table_data.to_csv(os.path.join(target_dir, "../", "decoded_{}.csv".format(sample_name)), index=None)
         # return table_data, os.path.join(target_dir, "../", "decoded_{}.csv".format(sample_name))

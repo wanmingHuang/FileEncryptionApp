@@ -14,7 +14,7 @@
 </head>
 
 <body>
-    <h1 style="text-align: center;">FileEncryptionApp</h1>
+    <h1 style="text-align: center;">Table Encoder</h1>
 
     {% with messages = get_flashed_messages() %}
         {% if messages %}
@@ -34,50 +34,13 @@
                 <div class='row'>
                     <div class="col-md-6">
                         <form method=get>
-                            {% if if_encode %}
-                                <input type=submit value="Encode" formaction="set_mode">
-                            {% else %}
-                                <input type=submit value="Decode" formaction="set_mode">
-                            {% endif %}
+                            <input type=submit value="Back to main" formaction="/">
                         </form>
                     </div>
                     <div class="col-md-6">
-                        {% if if_encode %}
-                            <form method=get>
-                                <input type=submit value="Generate key" formaction="generate_new_key">
-                            </form>
-                        {% else %}
-                            <input type="button" data-toggle="modal" data-target="#keyModal" value="Upload key">
-
-                            <!-- popup modal for uploading key file -->                    
-                            <!-- Modal -->
-                            <div class="modal fade" id="keyModal" tabindex="-1" role="dialog" aria-labelledby="keyModalLabel" aria-hidden="true">
-                                <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                    <h5 class="modal-title" id="keyModalLabel">Upload key file</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                    </div>
-
-                                    <form method=post enctype=multipart/form-data action='upload_key'>
-                                        <div class="modal-body"> <!-- a form for uploading key file -->
-                                            <input type=file name="file" style="text-align: center;">
-                                        </div>
-                                        <div class="modal-footer">
-                                            <input type="submit" name="" value="Cancel">
-                                            <input type="submit" name="submit_button" value="Upload">
-                                        </div>
-                                    </form>
-                                </div>
-                                </div>
-                            </div>
-
-                            <!-- <form method=post>
-                                <input type=submit value="Upload key" formaction="generate_new_key">
-                            </form> -->
-                        {% endif %}
+                        <form method=get>
+                            <input type=submit value="Generate key" formaction="generate_new_key">
+                        </form>
                     </div>
                 </div>
             </div>
@@ -85,6 +48,7 @@
     </div>
     <!-- end choose encode or decode -->
     
+    <!-- Upload file and download-->
     <div class='card'>
         <div class="card-body">
             <div class='container'>
@@ -138,6 +102,7 @@
             </div>
         </div>
     </div>
+    <!-- end upload file and download-->
 
     <div class='card'>
         <div class="card-body">

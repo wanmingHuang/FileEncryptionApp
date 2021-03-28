@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- <html style="text-align: center;"> -->
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>EncryptionApp</title>
+    <link rel="stylesheet" href="{{ url_for('static',filename='assets/bootstrap/css/bootstrap.min.css') }}">
+    <script src="http://d3js.org/d3.v6.min.js"></script>
+</head>
+
+<body>
+    <h1 style="text-align: center;">Encrypter</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                {{messages[0]}}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- back to main option -->
+    <div class='card'>
+        <div class="card-body">
+            <div class='container'>
+                <div class='row'>
+                    <div class="col-md-6">
+                        <form method=get>
+                            <input type=submit value="Back to main" formaction="/">
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <input type="button" data-toggle="modal" data-target="#keyModal" value="Upload key">
+
+                        <!-- popup modal for uploading key file -->                    
+                        <!-- Modal -->
+                        <div class="modal fade" id="keyModal" tabindex="-1" role="dialog" aria-labelledby="keyModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                    <h5 class="modal-title" id="keyModalLabel">Upload key file</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                    </div>
+
+                                    <form method=post enctype=multipart/form-data action='upload_key'>
+                                        <div class="modal-body"> <!-- a form for uploading key file -->
+                                            <input type=file name="file" style="text-align: center;">
+                                        </div>
+                                        <div class="modal-footer">
+                                            <input type="submit" name="" value="Cancel">
+                                            <input type="submit" name="submit_button" value="Upload">
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- end -->
+    
+    <!-- Upload file and download-->
+    <div class='card'>
+        <div class="card-body">
+            <div class='container'>
+                <div class='row'>
+                    <div class='col-md-6'>
+                        <form method=post enctype=multipart/form-data>
+                            <input type=file name="file[]" multiple="" style="text-align: center;">
+                            <input type=submit value=Upload>
+                        </form>
+                    </div>
+                    {% if downloadable %}           
+                        <div class='col-md-6'>
+                            <form method=post action='download'>
+                                <input type="submit" value=Download>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- end upload file and download-->
+
+    <script src="{{ url_for('static',filename='assets/js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/bootstrap/js/bootstrap.min.js') }}"></script>
+</body>
+
+</html>

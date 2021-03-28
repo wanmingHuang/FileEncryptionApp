@@ -18,3 +18,17 @@ def decrypt(encrypted, key):
     decrypted = f.decrypt(encrypted)
     return decrypted
 
+
+def encrypt_file(file_name, key):
+    with open(file_name, 'rb') as f:
+        content = f.read()  # Read the bytes of the input file
+    encrypted = encrypt(content, key)
+    with open(file_name, 'wb') as f:
+        f.write(encrypted)
+
+def decrypt_file(file_name, key):
+    with open(file_name, 'rb') as f:
+        content = f.read()  # Read the bytes of the input file
+    decrypted = decrypt(content, key)
+    with open(file_name, 'wb') as f:
+        f.write(decrypted)

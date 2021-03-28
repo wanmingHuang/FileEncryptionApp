@@ -15,13 +15,10 @@ import pandas as pd
 import os
 import numpy as np
 from sklearn.linear_model import LinearRegression
-# import plotly.express as px
 from zipfile import ZipFile
 import encryption
 from io import StringIO
-# import matplotlib
-# import matplotlib.pyplot as plt
-# matplotlib.use('Agg')
+import utils
 
 
 def encode_string_column(column, column_index):
@@ -253,27 +250,18 @@ def encrypt_zip(target_dir, file_list, mapping_files, key=None):
     """
 
     # create a zip file with the encoded data and mapping files
-    zipObj = ZipFile(os.path.join(target_dir, 'encoded_tables.zip'), 'w')
-    for file_path in file_list:
-        zipObj.write(file_path)
-    zipObj.close()
+    zipfilename = os.path.join(target_dir, 'encoded_tables.zip')
+    utils.zip_file(zipfilename, file_list)
 
     # encrypt the zipped file
     if key is not None:
-        with open(os.path.join(target_dir, 'encoded_tables.zip'), 'rb') as f:
-            zipObj = f.read()  # Read the bytes of the input file
-        encrypted = encryption.encrypt(zipObj, key)
-        with open(os.path.join(target_dir, 'encoded_tables.zip'), 'wb') as f:
-            f.write(encrypted)  # Write the encrypted bytes to the output file
+        encryption.encrypt_file(zipfilename, key)
 
     # also zip the mapping file
-    new_zipObj = ZipFile(os.path.join(target_dir, 'encoded_files.zip'), 'w')
-    new_zipObj.write(os.path.join(target_dir, 'encoded_tables.zip'))
-    for file_path in mapping_files:
-        new_zipObj.write(file_path)
-    new_zipObj.close()
+    new_zipfilename = os.path.join(target_dir, 'encoded_files.zip')
+    utils.zip_file(new_zipfilename, mapping_files + [zipfilename])
     
-    return os.path.join(target_dir, 'encoded_files.zip')
+    return new_zipfilename
 
 
 def read_and_encode_data(file_path, target_dir, date_columns, float_columns, string_columns, encoding_lvl):
