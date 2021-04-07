@@ -305,6 +305,8 @@ def join_table():
                 samples.append([raw_column_names, raw_cell_values])
                 sample_names.append(file_path.split("/")[-1])
             encode_step = 2
+            error_message = str(e)
+            flash(error_message)
         column_types=[column_types]
 
     else: # do not join columns, for each table, choose data types

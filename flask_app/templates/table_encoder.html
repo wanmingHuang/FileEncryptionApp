@@ -198,16 +198,6 @@
                                                 {% set slider_show_value = 0%}
                                             {% endif %}
 
-                                            <!-- {% if slider_show_value == 0 %}
-                                                {% set slider_explanation = 'do nothing' %}
-                                            {% elif slider_show_value == 1 %}
-                                                {% set slider_explanation = 'encode column names' %}
-                                            {% elif slider_show_value == 2 %}
-                                                {% set slider_explanation = 'encode string values' %}
-                                            {% else %}
-                                                {% set slider_explanation = 'encode float values' %}
-                                            {% endif %} -->
-
                                             {% set slider_explantions = ['0: do nothing', '1: encode column names', '2: encode string values', '3: encode float values', '4: encode float values', '5: encode float values', '6: encode float values', '7: encode float values', '8: encode float values', '9: encode float values', '10: encode float values'] %}
 
                                             <input type="range" min="0" max="10" value={{slider_show_value}} class="slider" id="{{'rangeInput-%d' % (outer_loop.index)}}" name="{{'encoding_level-%d' % outer_loop.index}}" style="text-align: center;" oninput="this.nextElementSibling.value = {{slider_explantions}}[this.value]">
