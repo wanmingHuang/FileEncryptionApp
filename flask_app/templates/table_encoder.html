@@ -125,7 +125,7 @@
                         {% endif %}
 
                         {% if encode_step == 2 %}
-                        <form method=post action='join_table'>
+                        <form method=post action='group_columns'>
                             <div class="tab-content">
                                 {% for sample in samples %}
                                     {% set outer_loop = loop %}
@@ -137,7 +137,9 @@
                                     <div role="tabpanel" id={{'tab-%d' % loop.index}} aria-labelledby={{'nav-%d' % loop.index}} class="{{class_content}}">
                                     <div class="table-responsive">
                                         <table class="table">
-                                            {% if error_message %}
+
+                                            <!-- join tables (deprecated) -->
+                                            <!-- {% if error_message %}
                                                 <caption>{{error_message}}</caption>
                                             {% else %}
                                                 <caption>select which columns to join</caption>
@@ -159,7 +161,37 @@
                                                         </th>
                                                     {% endfor %}
                                                 </tr>
+                                            </thead> -->
+
+                                            <!-- specify which columns should be grouped for string conversion -->
+                                            {% if error_message %}
+                                                <caption>{{error_message}}</caption>
+                                            {% else %}
+                                                <caption>select which columns to group for string conversion</caption>
+                                            {% endif %}
+                                            <thead>
+                                                <tr>
+                                                    {% for column_name in sample[0] %}
+                                                        <th> 
+                                                            {% if column_name in columns_to_group[outer_loop.index - 1] %}                                
+                                                            <div class="form-check form-check-inline">
+                                                                <input
+                                                                class="form-check-input"
+                                                                type="checkbox"
+                                                                name={{'group_columns-%d-%s' % (outer_loop.index, column_name)}}
+                                                                id="inlineRadio1"
+                                                                value={{column_name}}
+                                                                />
+                                                                <label class="form-check-label" for="inlineRadio1">{{column_name}}</label>
+                                                            </div>
+                                                            {% else %}
+                                                                {{column_name}}
+                                                            {% endif %}
+                                                        </th>
+                                                    {% endfor %}
+                                                </tr>
                                             </thead>
+
                                             <tbody>
                                                 {% for row in sample[1] %}
                                                     <tr>

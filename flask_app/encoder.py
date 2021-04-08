@@ -21,15 +21,39 @@ from io import StringIO
 import utils
 
 
-def encode_string_column(column, column_index):
+def generate_string_mapping_grouped_columns(tables, grouped_columns):
+    """
+        generate string mappings given certain columns are grouped
+    """
+    all_row_name_mappings = [{} for i in range(len(tables))]
+    for group_index in range(len(grouped_columns)):
+        group = grouped_columns[group_index]
+        values = []
+        for table_index in range(len(group)):
+            values.extend(list(tables[table_index][group[table_index]].values.flatten()))
+
+        unique_values = np.unique(values)
+        row_name_mapping_dic = {}
+        for i in range(len(unique_values)):
+            row_name_mapping_dic[unique_values[i]] = 'group{}_{}'.format(group_index, i)
+
+        for table_index in range(len(group)):
+            for column_name in group[table_index]:
+                all_row_name_mappings[table_index][column_name] = row_name_mapping_dic
+    return all_row_name_mappings
+
+
+def encode_string_column(column, column_index, row_name_mapping_dic):
     """
         encode a column with string entry
     """
     # decide encoded value to replace each unique entry
-    unique_values = column.unique()
-    row_name_mapping_dic = {}
-    for i in range(len(unique_values)):
-        row_name_mapping_dic[unique_values[i]] = 'cell{}_{}'.format(column_index, i)
+    
+    if row_name_mapping_dic is None:
+        unique_values = column.unique()
+        row_name_mapping_dic = {}
+        for i in range(len(unique_values)):
+            row_name_mapping_dic[unique_values[i]] = 'cell{}_{}'.format(column_index, i)
 
     all_values = column.to_numpy()
     new_values = [row_name_mapping_dic[all_values[i]] for i in range(len(all_values))]
@@ -92,7 +116,7 @@ def collect_column_types(table_data):
     return column_types
 
 
-def encode(raw_data, float_columns, string_columns, encoding_lvl):
+def encode(raw_data, float_columns, string_columns, encoding_lvl, row_mapping_dict_grouped):
     """
         decode data type of each column
 
@@ -117,7 +141,15 @@ def encode(raw_data, float_columns, string_columns, encoding_lvl):
         # string columns
         for i in range(len(string_columns)):
             column_name = string_columns[i]
-            encoded_values, row_mapping_dict = encode_string_column(table_data[column_name], i)
+            original_column_name = raw_column_names[encoded_column_names.index(column_name)]
+            if original_column_name in row_mapping_dict_grouped.keys():
+                # print(column_name)
+                # print(table_data[column_name])
+                # print(row_mapping_dict_grouped[column_name])
+                
+                encoded_values, row_mapping_dict = encode_string_column(table_data[column_name], i, row_mapping_dict_grouped[original_column_name])
+            else:
+                encoded_values, row_mapping_dict = encode_string_column(table_data[column_name], i, None)
             table_data[column_name] = encoded_values
             row_mapping_dicts[column_name] = row_mapping_dict
 
@@ -225,8 +257,6 @@ def read_file(storage_file):
 
 
 def read_data(file_path, date_columns):
-    print(file_path)
-    print(date_columns)
     table_data = pd.read_csv(file_path, parse_dates=date_columns)
     column_types = collect_column_types(table_data)
     return table_data, column_types
@@ -264,7 +294,7 @@ def encrypt_zip(target_dir, file_list, mapping_files, key=None):
     return new_zipfilename
 
 
-def read_and_encode_data(file_path, target_dir, date_columns, float_columns, string_columns, encoding_lvl):
+def read_and_encode_data(file_path, target_dir, date_columns, float_columns, string_columns, encoding_lvl, row_mapping_dict_grouped):
     """
         main function for data encoding
         read raw data
@@ -274,7 +304,7 @@ def read_and_encode_data(file_path, target_dir, date_columns, float_columns, str
     table_data, _ = read_data(file_path, date_columns)
     file_name = file_path.split("/")[-1]
 
-    encoded_data, mapping_data = encode(table_data, float_columns, string_columns, encoding_lvl)
+    encoded_data, mapping_data = encode(table_data, float_columns, string_columns, encoding_lvl, row_mapping_dict_grouped)
 
     # write mapping data to file
     mapping_file_list = write_mapping(mapping_data, target_dir, file_name)

@@ -132,13 +132,29 @@ def encode_tables():
 
         samples = []
         all_column_types = []
+        columns_to_group = [[] for i in range(len(sample_names))]
+
+        table_index = 0
         for file_path in app.config['FILE_PATH']:
             raw_data, column_types = encoder.read_data(file_path, [])
             raw_column_names, raw_cell_values = encoder.extract_sample(raw_data)
             samples.append([raw_column_names, raw_cell_values])
             all_column_types.append(column_types)
 
-        encode_step = 2 if len(samples) > 1 else 3
+            # all string columns are potential columns to be grouped
+            for i in range(len(column_types)):
+                if column_types[i] == 3:
+                    columns_to_group[table_index].append(raw_column_names[i])
+
+            table_index += 1
+
+        app.config['columns_to_group'] = columns_to_group
+        app.config['grouped_columns'] = []  # for each group [ for each table [] ] 
+
+        print(columns_to_group)
+        print("!"*80)
+
+        encode_step = 2 if len(samples) > 1 else 2
         column_types = [] if len(samples) > 1 else all_column_types
 
         return render_template('table_encoder.html',
@@ -146,7 +162,8 @@ def encode_tables():
                             sample_names=sample_names,
                             if_encode=app.config['IF_ENCODE'],
                             column_types=all_column_types,
-                            encode_step=encode_step)
+                            encode_step=encode_step,
+                            columns_to_group=columns_to_group)
 
 
 @app.route('/encrypt_data', methods=['GET', 'POST'])
@@ -323,6 +340,45 @@ def join_table():
                             error_message="")
 
 
+@app.route("/group_columns", methods=["POST"])
+def group_columns():
+    """
+        Group columns for string conversion across columns, and possibly tables
+    """
+    # print(list(request.form.keys()))
+    # print("="*80)
+
+    group_columns = [[] for i in range(app.config['NUM_TABLES'])]
+
+    column_cnt = 0
+    for key in request.form.keys():
+        if "group_columns" in key:
+            key = key.replace("group_columns-", "")
+            table_index, column_name = key.split("-")
+            table_index = int(table_index)
+            group_columns[table_index - 1].append(column_name)
+            app.config['columns_to_group'][table_index - 1].remove(column_name)
+            column_cnt += 1
+    
+    if column_cnt > 1:
+        app.config['grouped_columns'].append(group_columns)
+        encode_step = 2
+    else:
+        encode_step = 3
+
+    all_table_data, column_types, samples, sample_names, file_paths = encoder.read_tables(app.config['UPLOAD_FOLDER'])
+    app.config['FILE_PATH'] = file_paths
+    
+    return render_template('table_encoder.html',
+                            if_encode=app.config['IF_ENCODE'],
+                            samples=samples,
+                            sample_names=sample_names,
+                            column_types=column_types,
+                            encode_step=encode_step,
+                            columns_to_group=app.config['columns_to_group'],
+                            error_message="")
+
+
 @app.route("/adjust_encoding_level", methods=["POST"])
 def adjust_encoding_level():
     """
@@ -330,8 +386,6 @@ def adjust_encoding_level():
 
         encode table with the updated slider
     """
-    # print(list(request.form.keys()))
-    # print("="*80)
 
     encoding_levels = []
 
@@ -374,9 +428,16 @@ def adjust_encoding_level():
     data = []
 
     for i in range(app.config['NUM_TABLES']):
+        all_table_data, _, _, _, _ = encoder.read_tables(app.config['UPLOAD_FOLDER'])
+
+    # if some columns are grouped, generate string mapping
+    all_row_name_mappings = encoder.generate_string_mapping_grouped_columns(all_table_data, app.config['grouped_columns'])
+
+    for i in range(app.config['NUM_TABLES']):
         sample_names.append(app.config['FILE_PATH'][i].split("/")[-1])
         # encode with the current encoding level
-        raw_data, encoded_data, encoded_file_name, mapping_file_list = encoder.read_and_encode_data(app.config['FILE_PATH'][i], app.config['ENCODE_FOLDER'], date_columns[i], float_columns[i], string_columns[i], encoding_levels[i])
+        raw_data, encoded_data, encoded_file_name, mapping_file_list = encoder.read_and_encode_data(
+            app.config['FILE_PATH'][i], app.config['ENCODE_FOLDER'], date_columns[i], float_columns[i], string_columns[i], encoding_levels[i], all_row_name_mappings[i])
 
         app.config['DOWNLOAD_FILE_PATHS'].append(encoded_file_name)
         app.config['MAPPING_FILES'].extend(mapping_file_list)
