@@ -149,10 +149,7 @@ def encode_tables():
             table_index += 1
 
         app.config['columns_to_group'] = columns_to_group
-        app.config['grouped_columns'] = []  # for each group [ for each table [] ] 
-
-        print(columns_to_group)
-        print("!"*80)
+        app.config['grouped_columns'] = []  # for each group [ for each table [] ]
 
         encode_step = 2 if len(samples) > 1 else 2
         column_types = [] if len(samples) > 1 else all_column_types
