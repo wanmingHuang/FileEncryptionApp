@@ -90,16 +90,16 @@ def table2json(table_data):
     return table_data.to_json(date_unit='ns')
 
 
-@app.route('/set_mode', methods=['GET'])
-def set_mode():
-    """
-        set the mode to be encode or decode
-    """
-    app.config['key'] = None
-    reset_folders()
-    app.config['IF_ENCODE'] = not app.config['IF_ENCODE']
+#@app.route('/set_mode', methods=['GET'])
+#def set_mode():
+#    """
+#        set the mode to be encode or decode
+#    """
+#    app.config['key'] = None
+#    reset_folders()
+#    app.config['IF_ENCODE'] = not app.config['IF_ENCODE']
 
-    return redirect('/')
+#    return redirect('/')
 
 
 def process_uploaded_files():
@@ -280,8 +280,10 @@ def root():
         app.config['ROLE'] = request.form['role']
 
     if 'ROLE' not in app.config.keys() or app.config['ROLE'] is None:
+        print("render1")
         return render_template('navigator.html')
     else:
+        print("render2")
         return render_template('navigator.html', role=app.config['ROLE'])
 
 
