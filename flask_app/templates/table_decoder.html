@@ -7,9 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
     <title>EncryptionApp</title>
     <link rel="stylesheet" href="static/assets/bootstrap/css/bootstrap.min.css">
-    <script src="http://d3js.org/d3.v6.min.js"></script>
-    <script src="static/assets/js/d3plot.js" charset="utf-8"></script>
-    <script src="static/assets/js/frontend.js" charset="utf-8"></script>
 </head>
 
 <body>
@@ -31,9 +28,7 @@
             <div class='container'>
                 <div class='row'>
                     <div class="col-md-6">
-                        <form method=get>
-                            <input type=submit value="Back to main" formaction="/">
-                        </form>
+                        <input type=button value="Back to main" onclick="window.location.href = '../';">
                     </div>
                     <div class="col-md-6">
                         <input type="button" data-toggle="modal" data-target="#keyModal" value="Upload key">
@@ -270,6 +265,8 @@
 
     <script src="static/assets/js/jquery.min.js"></script>
     <script src="static/assets/bootstrap/js/bootstrap.min.js"></script>
+
+    <script src="http://d3js.org/d3.v6.min.js"></script>
     <script src="static/assets/js/d3plot.js" charset="utf-8"></script>
 </body>
 
