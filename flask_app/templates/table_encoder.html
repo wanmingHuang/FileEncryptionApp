@@ -8,9 +8,6 @@
     <title>EncryptionApp</title>
     <link rel="stylesheet" href="static/assets/bootstrap/css/bootstrap.min.css">
     <!-- <link rel="stylesheet" href="{{ url_for('static',filename='assets/css/styles.css') }}"> -->
-    <script src="http://d3js.org/d3.v6.min.js"></script>
-    <script src="static/assets/js/d3plot.js" charset="utf-8"></script>
-    <script src="static/assets/js/frontend.js" charset="utf-8"></script>
 </head>
 
 <body>
@@ -33,9 +30,7 @@
             <div class='container'>
                 <div class='row'>
                     <div class="col-md-6">
-                        <form method=get>
-                            <input type=submit value="Back to main" formaction="/">
-                        </form>
+                        <input type=button value="Back to main" onclick="window.location.href = '../';">
                     </div>
                     <div class="col-md-6">
                         <form method=get>
@@ -427,8 +422,11 @@
 
     <script src="static/assets/js/jquery.min.js"></script>
     <script src="static/assets/bootstrap/js/bootstrap.min.js"></script>
-    <script src="static/assets/js/d3plot.js" charset="utf-8"></script>
     <!-- <script src="{{ url_for('static',filename='assets/js/table_drag.js') }}"></script> -->
+
+    <script src="http://d3js.org/d3.v6.min.js"></script>
+    <script src="static/assets/js/d3plot.js" charset="utf-8"></script>
+    <script src="static/assets/js/frontend.js" charset="utf-8"></script>
 </body>
 
 </html>
