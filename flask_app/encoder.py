@@ -19,12 +19,15 @@ from zipfile import ZipFile
 import encryption
 from io import StringIO
 import utils
+import uuid
 
 
 def generate_string_mapping_grouped_columns(tables, grouped_columns):
     """
         generate string mappings given certain columns are grouped
     """
+    tables = [utils.json2table(item) for item in tables]
+
     all_row_name_mappings = [{} for i in range(len(tables))]
     for group_index in range(len(grouped_columns)):
         group = grouped_columns[group_index]
@@ -169,39 +172,31 @@ def encode(raw_data, float_columns, string_columns, encoding_lvl, row_mapping_di
     return table_data, [raw_column_names, encoded_column_names, row_mapping_dicts]
 
 
-def write_mapping(mapping_data, target_dir, file_name):
+def write_mapping(mapping_data, sample_name):
     """
         write string mapping to file
     """
     raw_column_names, encoded_column_names, row_mapping_dicts = mapping_data
-    file_name = file_name.replace('.csv', '')
+    sample_name = sample_name.replace('.csv', '')
 
-    mapping_file_list = []
-
-    # write to file
+    # write to string
+    row_mapping_records  = {}
     if row_mapping_dicts is not None:
         for column_name, row_mapping_dict in row_mapping_dicts.items():
-            row_mapping_file = os.path.join(target_dir, "{}-{}-row.txt".format(file_name,column_name))
-            with open(row_mapping_file, 'w') as f:
-                for key, value in row_mapping_dict.items():
-                    f.write('"{}","{}"\n'.format(key, value))
-            mapping_file_list.append(row_mapping_file)
 
-    column_mapping_file = os.path.join(target_dir, "{}-column.txt".format(file_name))
-    with open(column_mapping_file, 'w') as f:
-        for i in range(len(raw_column_names)):
-            f.write('"{}","{}"\n'.format(raw_column_names[i], encoded_column_names[i]))
-        mapping_file_list.append(column_mapping_file)
+            row_mapping_record = ""
+            for key, value in row_mapping_dict.items():
+                row_mapping_record += '"{}","{}"\n'.format(key, value)
+            row_mapping_records["{}-{}-row".format(sample_name,column_name)] = row_mapping_record
+
+
+    column_mapping_record  = {"{}-column.txt".format(sample_name): ""}
+    # with open(column_mapping_file, 'w') as f:
+    for i in range(len(raw_column_names)):
+        column_mapping_record["{}-column.txt".format(sample_name)] += '"{}","{}"\n'.format(raw_column_names[i], encoded_column_names[i])
     
-    return mapping_file_list
-
-
-def plot_columns(table_data, target_dir, fig_name):
-    fig = plt.figure()
-    for column_name in table_data.columns:
-        if table_data[column_name].dtype == np.float64:
-            plt.plot(table_data[column_name])
-    plt.savefig(os.path.join(target_dir, fig_name+'.png'))
+    # return mapping_file_list
+    return row_mapping_records, column_mapping_record
 
 
 def read_tables(root_dir):
@@ -256,8 +251,8 @@ def read_file(storage_file):
     return table_data
 
 
-def read_data(file_path, date_columns):
-    table_data = pd.read_csv(file_path, parse_dates=date_columns)
+def read_table(file, date_columns):
+    table_data = pd.read_csv(file, parse_dates=date_columns)
     column_types = collect_column_types(table_data)
     return table_data, column_types
 
@@ -270,51 +265,87 @@ def generate_new_key():
         f.write(key)
 
 
-def encrypt_zip(target_dir, file_list, mapping_files, key=None):
+def encrypt_zip(encoded_tables, sample_names, row_mapping, column_mapping, key=None):
     """
         comes after encode
+
+        write encoded tables to temperary directory, zip and encrypt it
 
         zip everything
         generate a key
         encrypt the zip file
     """
+    encoded_tables = [pd.read_json(item) for item in encoded_tables]
+    tmpdirname = str(uuid.uuid4())
 
-    # create a zip file with the encoded data and mapping files
-    zipfilename = os.path.join(target_dir, 'encoded_tables.zip')
-    utils.zip_file(zipfilename, file_list)
+    os.mkdir(tmpdirname)
+
+    all_files = []
+
+    # write encoded tables
+    table_files = []
+    for i in range(len(encoded_tables)):
+        table_filename = os.path.join(tmpdirname, sample_names[i])
+        encoded_tables[i].to_csv(table_filename, index=None)
+        table_files.append(table_filename)
+
+    zipfilename = os.path.join(tmpdirname, 'encoded_tables.zip')
+    utils.zip_file(zipfilename, table_files)
 
     # encrypt the zipped file
     if key is not None:
         encryption.encrypt_file(zipfilename, key)
+    
+    all_files.append(zipfilename)
+
+    # write mapping files
+    for i in range(len(row_mapping)):
+        for key in row_mapping[i].keys():
+            print(key)
+            with open(os.path.join(tmpdirname, key+'.txt'), 'w') as f:
+                f.write(row_mapping[i][key])
+            all_files.append(os.path.join(tmpdirname, key+'.txt'))
+
+    for i in range(len(column_mapping)):
+        for key in column_mapping[i].keys():
+            with open(os.path.join(tmpdirname, key+'.txt'), 'w') as f:
+                f.write(column_mapping[i][key])
+            all_files.append(os.path.join(tmpdirname, key+'.txt'))
+
 
     # also zip the mapping file
-    new_zipfilename = os.path.join(target_dir, 'encoded_files.zip')
-    utils.zip_file(new_zipfilename, mapping_files + [zipfilename])
+    new_zipfilename = os.path.join(tmpdirname, 'encoded_files.zip')
+    utils.zip_file(new_zipfilename, all_files)
     
-    return new_zipfilename
+    return new_zipfilename, tmpdirname
 
 
-def read_and_encode_data(file_path, target_dir, date_columns, float_columns, string_columns, encoding_lvl, row_mapping_dict_grouped):
+def read_and_encode_data(sample_name, table_data, date_columns, float_columns, string_columns, encoding_lvl, row_mapping_dict_grouped):
     """
         main function for data encoding
         read raw data
         encode data
         save encoded results to file
     """
-    table_data, _ = read_data(file_path, date_columns)
-    file_name = file_path.split("/")[-1]
+    # table_data, _ = read_data(file_path, date_columns)
+    # file_name = file_path.split("/")[-1]
+
+    table_data = utils.json2table(table_data)
+
+    for column_name in date_columns:
+        table_data[column_name]= pd.to_datetime(table_data[column_name])
 
     encoded_data, mapping_data = encode(table_data, float_columns, string_columns, encoding_lvl, row_mapping_dict_grouped)
 
     # write mapping data to file
-    mapping_file_list = write_mapping(mapping_data, target_dir, file_name)
+    row_mapping_records, column_mapping_record = write_mapping(mapping_data, sample_name)
 
     # write encoded data to file
     
-    encoded_file_name = os.path.join(target_dir, 'encoded_{}'.format(file_name))
-    encoded_data.to_csv(encoded_file_name, index=None)
+    # encoded_file_name = os.path.join(target_dir, 'encoded_{}'.format(sample_name))
+    # encoded_data.to_csv(encoded_file_name, index=None)
 
-    return table_data, encoded_data, encoded_file_name, mapping_file_list
+    return table_data, encoded_data, row_mapping_records, column_mapping_record
 
 
 def extract_sample(table_data):

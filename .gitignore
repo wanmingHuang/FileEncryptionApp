@@ -5,3 +5,4 @@ sample_data/
 *.pyc
 *files/
 *.key
+flask_session/

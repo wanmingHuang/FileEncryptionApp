@@ -56,7 +56,6 @@
                     </div>
                     {% if encode_step == 4 or (not if_encode and encode_step == 3) %}
 
-                        
                         <div class='col-md-6'>
                             {% if if_encode %}
                                 <input type="button" data-toggle="modal" data-target="#exampleModal" value=Download>
@@ -99,14 +98,15 @@
     </div>
     <!-- end upload file and download-->
 
+    <!-- main content -->
     <div class='card'>
         <div class="card-body">
-            <!-- <h5 class="card-title">Step 1</h5>
-            <h6 class="card-subtitle mb-2 text-muted">Select multiple String columns to group. These columns can be within and across multiple tables.</h6> -->
+            <h5 class="card-title">Step {{encode_step - 1}}</h5>
+            <h6 class="card-subtitle mb-2 text-muted">{{explanation}}</h6>
             <div class="container">
                 <div class="row">
                     <div class="col-md-6">
-                        {% if encode_step == 2 or encode_step == 3 or encode_step == 4%}
+                        {% if encode_step %} <!-- show the original table -->
                         <ul class="nav nav-tabs">
                             {% for sample in samples %}
                                 {% if loop.index == 1 %}
@@ -121,7 +121,64 @@
                         </ul>
                         {% endif %}
 
-                        {% if encode_step == 2 %}
+                        {% if encode_step == 2%} <!-- set column data type -->
+                        <form method=post action='set_column_data_type'>
+                            <div class="tab-content">
+                                {% for sample in samples %}
+                                    {% set outer_loop = loop %}
+                                    {% if loop.index == 1 %}
+                                        {% set class_content = 'tab-pane fade show active' %}
+                                    {% else %}
+                                        {% set class_content = 'tab-pane fade' %}
+                                    {% endif %}
+                                    <div role="tabpanel" id={{'tab-%d' % loop.index}} aria-labelledby={{'nav-%d' % loop.index}} class="{{class_content}}">
+                                        <div class="table-responsive">
+                                            <table class="table">
+                                                <!-- <caption>0: date; 1: int; 2: float; 3: str</caption> -->
+                                                {% set options = [0, 1, 2, 3] %}
+                                                {% set option_content = ['date', 'int', 'float', 'string'] %}
+                                                <thead>
+                                                    <tr>
+                                                        {% for column_name in sample[0] %}
+                                                            {% set column_index = loop.index - 1 %}
+                                                            <th> 
+                                                                {{column_name}}
+                                                                {% if if_encode %}
+                                                                    <select class="form-control" style="width:auto;" name="{{'column_types-%d:%s' % (outer_loop.index - 1, column_name)}}">
+                                                                        {% for option in options %}
+                                                                            {% if option == column_types[outer_loop.index - 1][column_index] %}
+                                                                                <option value="{{option}}" selected>{{option_content[option]}}</option>
+                                                                            {% else %}
+                                                                            <option value="{{option}}">{{option_content[option]}}</option>
+                                                                            {% endif %}
+                                                                        {% endfor %}
+                                                                    </select>
+                                                                {% endif %}
+                                                            </th>
+                                                        {% endfor %}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for row in sample[1] %}
+                                                        <tr>
+                                                            {% for column_value in row %}
+                                                                <td> {{column_value}} </td>
+                                                            {% endfor %}
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% if if_encode %}
+                                <input type="submit" value="Confirm column data type">
+                            {% endif %}
+                        </form>
+                        {% endif %}
+
+                        {% if encode_step == 3 %} <!-- group columns for String conversion -->
                         <form method=post action='group_columns'>
                             <div class="tab-content">
                                 {% for sample in samples %}
@@ -178,11 +235,11 @@
                                 {% endfor %}
                             </div>
 
-                            <input type="submit" value="submit" >
+                            <input type="submit" value="Continue choosing String columns to join" >
                         </form>
                         {% endif %}
 
-                        {% if encode_step == 3 or encode_step == 4%}
+                        {% if encode_step == 4%}
                         <form method=post action='adjust_encoding_level'>
                             <div class="tab-content">
                                 {% for sample in samples %}
@@ -218,7 +275,7 @@
                                                             {% set column_index = loop.index - 1 %}
                                                             <th> 
                                                                 {{column_name}}
-                                                                {% if if_encode %}
+                                                                <!-- {% if if_encode %}
                                                                     <select class="form-control" style="width:auto;" name="{{'column_types-%d:%s' % (outer_loop.index - 1, column_name)}}">
                                                                         {% for option in options %}
                                                                             {% if option == column_types[outer_loop.index - 1][column_index] %}
@@ -228,7 +285,7 @@
                                                                             {% endif %}
                                                                         {% endfor %}
                                                                     </select>
-                                                                {% endif %}
+                                                                {% endif %} -->
                                                             </th>
                                                         {% endfor %}
                                                     </tr>
@@ -269,8 +326,7 @@
                         {% endif %}
                     </div>
                     <div class="col-md-6">
-
-                        {% if encode_step == 4%}
+                        {% if encode_step == 4%} <!-- show the encoded table -->
                             <ul class="nav nav-tabs">
                                 {% for sample in encoded_samples %}
                                     {% if loop.index == 1 %}
@@ -323,78 +379,7 @@
             </div>
         </div>
     </div>
-
-    <div class='card'>
-        <div class="card-body">
-            <div class="container">
-                {% if encode_step == 4%}
-                    <ul class="nav nav-tabs">
-                        {% for sample in samples %}
-                            {% if loop.index == 1 %}
-                                {% set class_content = 'nav-link active' %}
-                            {% else %}
-                                {% set class_content = 'nav-link' %}
-                            {% endif %}
-                            <li class="nav-item">
-                                <a data-toggle='tab' class={{class_content}} id={{'plot-nav-%d' % loop.index}} href={{'#plot-tab-%d' % loop.index}} aria-controls={{'plot-tab-%d' % loop.index}}>{{sample_names[loop.index-1]}}</a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                    <div class="tab-content">
-                        {% for sample in samples %}
-                            {% set outer_loop = loop %}
-                            {% if loop.index == 1 %}
-                                {% set class_content = 'tab-pane fade show active' %}
-                            {% else %}
-                                {% set class_content = 'tab-pane fade' %}
-                            {% endif %}
-                            <div role="tabpanel" id={{'plot-tab-%d' % loop.index}} aria-labelledby={{'plot-nav-%d' % loop.index}} class="{{class_content}}">
-                                {% set raw_plot = data[loop.index - 1][0] %}
-                                {% set raw_node_name = '#rawGraph-%d' % loop.index %}
-                                {% set encoded_plot = data[loop.index - 1][1] %}
-                                {% set encoded_node_name = '#encodedGraph-%d' % loop.index %}
-                                <button name="plotBtn" onclick="draw({{raw_plot}}, '{{raw_node_name}}'); draw({{encoded_plot}}, '{{encoded_node_name}}');">Plot</button>
-                            
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="table-responsive">
-                                            <div id={{'rawGraph-%d' % outer_loop.index}}></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="table-responsive">
-                                            <div id={{'encodedGraph-%d' % outer_loop.index}}></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    </div>
-
-                {% endif %}
-                
-                <!-- <div class="row">
-                    <div class="col-md-6">
-                        <div class="table-responsive">
-                            <div id='rawGraph'></div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="table-responsive">
-                            <div id='encodedGraph'></div>
-                        </div>
-                    </div>
-                </div> -->
-            </div>
-        </div>
-    </div>
-
-    <!-- {% if data %}
-    <script>
-        draw({{ data.raw_data | safe }}, "#rawGraph")
-        draw({{ data.encoded_data | safe }}, "#encodedGraph")
-    </script>
-    {% endif %} -->
+    <!-- end main content -->
 
     <script src="static/assets/js/jquery.min.js"></script>
     <script src="static/assets/bootstrap/js/bootstrap.min.js"></script>
