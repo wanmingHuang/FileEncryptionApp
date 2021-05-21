@@ -217,7 +217,7 @@ def generate_new_key():
 def encode_tables():
     session['IF_ENCODE'] = True
     if request.method == 'GET':
-        return render_template('table_encoder.html',
+        return render_template('table_encoder2.html',
                             if_encode=session['IF_ENCODE'],
                             encode_step=1)
     else:
@@ -249,6 +249,11 @@ def encode_tables():
         session['columns_to_group'] = columns_to_group
         session['grouped_columns'] = []  # for each group [ for each table [] ]
 
+        # for webpage purpose, records group index of each column, ungroup or nor String marks -1
+        session['columns_grouped'] = [{column_name:0 for column_name in columns_to_group[i]} for i in range(len(sample_names))]
+        session['group_cnt'] = 1 # record group index
+        session['group_colors'] = ['transparent', 'red', 'blue', 'yellow', 'purple', 'orange']
+
         session['encode_step'] = 2
         column_types = [] if len(session['samples']) > 1 else session['all_column_types']
         
@@ -260,44 +265,6 @@ def encode_tables():
                             column_types=session['all_column_types'],
                             encode_step=session['encode_step'],
                             columns_to_group=session['columns_to_group'])
-
-
-@app.route("/group_columns", methods=["POST"])
-def group_columns():
-    """
-        Group columns for string conversion across columns, and possibly tables
-    """
-
-    group_columns = [[] for i in range(session['NUM_TABLES'])]
-
-    column_cnt = 0
-    for key in request.form.keys():
-        if "group_columns" in key:
-            key = key.replace("group_columns-", "")
-            table_index, column_name = key.split("-")
-            table_index = int(table_index)
-            group_columns[table_index - 1].append(column_name)
-            session['columns_to_group'][table_index - 1].remove(column_name)
-            column_cnt += 1
-    
-    if column_cnt > 1:
-        session['grouped_columns'].append(group_columns)
-        session['encode_step'] = 3
-    else:
-        session['encode_step'] = 4
-
-    # all_table_data, column_types, samples, sample_names, file_paths = encoder.read_tables()
-    # app.config['FILE_PATH'] = file_paths
-    
-    return render_template('table_encoder2.html',
-                            explanation=explanations[session['encode_step'] - 2],
-                            if_encode=session['IF_ENCODE'],
-                            samples=session['samples'],
-                            sample_names=session['sample_names'],
-                            column_types=session['all_column_types'],
-                            encode_step=session['encode_step'],
-                            columns_to_group=session['columns_to_group'],
-                            error_message="")
 
 
 @app.route('/set_column_data_type', methods=['POST'])
@@ -329,12 +296,55 @@ def set_column_data_type():
     session['encode_step'] = 3
 
     return render_template('table_encoder2.html',
+                            explanation=explanations[session['encode_step'] - 2],
                             if_encode=session['IF_ENCODE'],
                             samples=session['samples'],
                             sample_names=session['sample_names'],
                             column_types=session['all_column_types'],
                             encode_step=session['encode_step'],
                             columns_to_group=session['columns_to_group'],
+                            columns_grouped=session['columns_grouped'],
+                            group_colors=session['group_colors'],
+                            error_message="")
+
+
+@app.route("/group_columns", methods=["POST"])
+def group_columns():
+    """
+        Group columns for string conversion across columns, and possibly tables
+    """
+
+    group_columns = [[] for i in range(session['NUM_TABLES'])]
+
+    column_cnt = 0
+    for key in request.form.keys():
+        if "group_columns" in key:
+            key = key.replace("group_columns-", "")
+            table_index, column_name = key.split("-")
+            table_index = int(table_index)
+            group_columns[table_index - 1].append(column_name)
+            session['columns_to_group'][table_index - 1].remove(column_name)
+            session['columns_grouped'][table_index - 1][column_name] = session['group_cnt']
+
+            column_cnt += 1
+    
+    if column_cnt > 1:
+        session['grouped_columns'].append(group_columns)
+        session['encode_step'] = 3
+        session['group_cnt'] += 1
+    else:
+        session['encode_step'] = 4
+    
+    return render_template('table_encoder2.html',
+                            explanation=explanations[session['encode_step'] - 2],
+                            if_encode=session['IF_ENCODE'],
+                            samples=session['samples'],
+                            sample_names=session['sample_names'],
+                            column_types=session['all_column_types'],
+                            encode_step=session['encode_step'],
+                            columns_to_group=session['columns_to_group'],
+                            columns_grouped=session['columns_grouped'],
+                            group_colors=session['group_colors'],
                             error_message="")
 
 
@@ -393,7 +403,7 @@ def adjust_encoding_level():
         data.append([utils.table2json(raw_data, True), utils.table2json(encoded_data, True)])
     
     # show tables and show plot
-    return render_template('table_encoder.html',
+    return render_template('table_encoder2.html',
                             if_encode=app.config['IF_ENCODE'],
                             samples=session['samples'],
                             sample_names=session['sample_names'],

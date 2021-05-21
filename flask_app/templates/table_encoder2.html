@@ -99,6 +99,7 @@
     <!-- end upload file and download-->
 
     <!-- main content -->
+    {% if samples %} <!-- if table is read, show step explanation -->
     <div class='card'>
         <div class="card-body">
             <h5 class="card-title">Step {{encode_step - 1}}</h5>
@@ -106,7 +107,7 @@
             <div class="container">
                 <div class="row">
                     <div class="col-md-6">
-                        {% if encode_step %} <!-- show the original table -->
+                        {% if encode_step %} <!-- table is read, show the original table -->
                         <ul class="nav nav-tabs">
                             {% for sample in samples %}
                                 {% if loop.index == 1 %}
@@ -204,16 +205,16 @@
                                                             {% if column_name in columns_to_group[outer_loop.index - 1] %}                                
                                                             <div class="form-check form-check-inline">
                                                                 <input
-                                                                class="form-check-input"
-                                                                type="checkbox"
-                                                                name={{'group_columns-%d-%s' % (outer_loop.index, column_name)}}
-                                                                id="inlineRadio1"
-                                                                value={{column_name}}
+                                                                    class="form-check-input"
+                                                                    type="checkbox"
+                                                                    name={{'group_columns-%d-%s' % (outer_loop.index, column_name)}}
+                                                                    id="inlineRadio1"
+                                                                    value={{column_name}}
                                                                 />
                                                                 <label class="form-check-label" for="inlineRadio1">{{column_name}}</label>
                                                             </div>
                                                             {% else %}
-                                                                {{column_name}}
+                                                                <span style="color:{{group_colors[columns_grouped[outer_loop.index - 1][column_name]]}}">{{ columns_grouped[outer_loop.index - 1][column_name] }}</span> {{column_name}} 
                                                             {% endif %}
                                                         </th>
                                                     {% endfor %}
@@ -379,6 +380,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
     <!-- end main content -->
 
     <script src="static/assets/js/jquery.min.js"></script>
