@@ -111,13 +111,14 @@ def decrypt_data():
     else:
         app.config['IF_ENCODE'] = False
         # assume only 1 file is uploaded
-        process_uploaded_files()
+        files, sample_names = process_uploaded_files()
         if app.config['key'] is None:
             flash('Pleae upload a key to decrypt')
             return render_template('decryption.html')
         else:
-            encryption.decrypt_file(app.config['FILE_PATH'][0], key=app.config['key'])
-            app.config['DOWNLOAD_FILE_PATH'] = app.config['FILE_PATH'][0]
+            session['sample_name_extension'] = sample_names[0].split(".")[-1]
+            decrypted_file_name = encryption.decrypt_file(files[0].read(), sample_name_extension=session['sample_name_extension'], key=app.config['key'])
+            app.config['DOWNLOAD_FILE_PATH'] = decrypted_file_name
             return render_template('decryption.html', downloadable=True)
 
 
@@ -390,16 +391,6 @@ def adjust_encoding_level():
         session['row_mapping'].append(row_mapping_records)
         session['column_mapping'].append(column_mapping_records)
 
-        # if no columns are specified, all float columns are plotted
-        # if len(plot_column_indexes[i]) == 0:
-        #     plot_column_indexes[i] = [raw_column_names.index(column_name) for column_name in float_columns[i]]
-        
-        # plot_column_flags = np.zeros(len(raw_column_names))
-        # for j in range(len(raw_column_names)):
-        #     if j in plot_column_indexes[i]:
-        #         plot_column_flags[j] = 1
-        # all_plot_column_flags.append(list(plot_column_flags.astype(np.int32)))
-
         data.append([utils.table2json(raw_data, True), utils.table2json(encoded_data, True)])
 
     # data for plot
@@ -451,7 +442,10 @@ def collect_plot_data():
 @app.after_request
 def remove_files(response):
     if (request.endpoint == "download"):
-        shutil.rmtree(session['TEMP_DIR'])
+        if os.path.isdir(session['TEMP_DIR']):
+            shutil.rmtree(session['TEMP_DIR'])
+        else:
+            os.remove(session['TEMP_DIR'])
     return response
 
 
@@ -468,10 +462,13 @@ def download():
                 key = request.files['file'].read()
         zipfilepath, tmpdirname = encoder.encrypt_zip(session['encoded_tables'], session['sample_names'], session['row_mapping'], session['column_mapping'], key)
         session['TEMP_DIR'] = tmpdirname
+        attachment_filename = "encoded_file" + '.zip'
     else: # download decoded files
         zipfilepath = app.config['DOWNLOAD_FILE_PATH']
+        session['TEMP_DIR'] = zipfilepath
+        attachment_filename = "decoded_file" + "." + session['sample_name_extension']
 
-    return send_file(zipfilepath, as_attachment=True, cache_timeout=0)
+    return send_file(zipfilepath, as_attachment=True, attachment_filename=attachment_filename, cache_timeout=0)
 
 
 @app.route("/upload_key", methods=["POST"])

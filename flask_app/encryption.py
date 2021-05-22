@@ -1,5 +1,6 @@
 import cryptography
 from cryptography.fernet import Fernet
+import uuid
 
 
 def generate_key():
@@ -26,9 +27,11 @@ def encrypt_file(file_name, key):
     with open(file_name, 'wb') as f:
         f.write(encrypted)
 
-def decrypt_file(file_name, key):
-    with open(file_name, 'rb') as f:
-        content = f.read()  # Read the bytes of the input file
+def decrypt_file(content, sample_name_extension, key):
+    # with open(file_name, 'rb') as f:
+    #     content = f.read()  # Read the bytes of the input file
     decrypted = decrypt(content, key)
-    with open(file_name, 'wb') as f:
+    tmpfilename = str(uuid.uuid4()) + "." + sample_name_extension
+    with open(tmpfilename, 'wb') as f:
         f.write(decrypted)
+    return tmpfilename
