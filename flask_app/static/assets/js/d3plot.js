@@ -1,6 +1,4 @@
 function draw_plots(table_index) {
-    console.log(table_index, '!!!');
-    // TODO: 
     $.ajax({
         type: "POST",
         contentType: "application/json;charset=utf-8",
@@ -14,6 +12,11 @@ function draw_plots(table_index) {
         }
     });
 
+}
+
+function clear_plots() {
+    d3.selectAll("#rawGraph > *").remove();
+    d3.selectAll("#encodedGraph > *").remove();
 }
 
 function draw(data, tag_name) {

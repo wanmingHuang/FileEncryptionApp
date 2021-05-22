@@ -114,7 +114,7 @@
                             {% set class_content = 'nav-link' %}
                         {% endif %}
                         <li class="nav-item">
-                            <a data-toggle='tab' class={{class_content}} id={{'nav-%d' % loop.index}} href={{'#tab-%d' % loop.index}} aria-controls={{'tab-%d' % loop.index}}>{{sample_names[loop.index-1]}}</a>
+                            <a data-toggle='tab' class={{class_content}} onclick="clear_plots()" id={{'nav-%d' % loop.index}} href={{'#tab-%d' % loop.index}} aria-controls={{'tab-%d' % loop.index}}>{{sample_names[loop.index-1]}}</a>
                         </li>
                     {% endfor %}
                 </ul>
