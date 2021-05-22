@@ -353,7 +353,7 @@ def extract_sample(table_data):
         extract sample from table data for showing in webpage
         the format is list of strings (each row)
     """
-    sample = table_data.head(3)
+    sample = table_data.head(3).round(2)
     column_names = sample.columns.to_list()
     cell_values = sample.values
     return column_names, cell_values

@@ -13,6 +13,8 @@
 <body>
     <h1 style="text-align: center;">Table Encoder</h1>
 
+    <h6 style="margin: 20px">This is the table encoder. It encodes and encrypt tables. It also allows you to adjust column types, group String columns and adjust desensitizing levels. You may start by generating a key file using "Generate key" button. This is later used to encrypt your encoded tables. Then upload one or more table files by clicking "Choose Files" button.</h1>
+
     {% with messages = get_flashed_messages() %}
         {% if messages %}
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -218,7 +220,7 @@
                                                                 <label class="form-check-label" for="inlineRadio1">{{column_name}}</label>
                                                             </div>
                                                             {% else %}
-                                                                <span style="color:{{group_colors[columns_grouped[outer_loop.index - 1][column_name]]}}">{{ columns_grouped[outer_loop.index - 1][column_name] }}</span> {{column_name}} 
+                                                                <span><sup style="color:{{group_colors[columns_grouped[outer_loop.index - 1][column_name]]}}">{{ columns_grouped[outer_loop.index - 1][column_name] }}</sup> {{column_name}} </span>
                                                             {% endif %}
                                                         </th>
                                                     {% endfor %}

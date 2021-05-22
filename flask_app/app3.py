@@ -165,9 +165,6 @@ def decode_tables():
                 raw_column_names, raw_cell_values = encoder.extract_sample(decoded_data)
                 samples.append([raw_column_names, raw_cell_values])
 
-            # convert raw data and encoded data to json to be plotted
-            # data = {'raw_data': table2json(decoded_data)}
-
             return render_template('table_decoder.html',
                                     if_encode=app.config['IF_ENCODE'],
                                     column_types=[],
@@ -285,12 +282,16 @@ def encode_tables():
 def set_column_data_type():
     """
         set column data type given user input
+
+        also update initial columns to group
     """
     # all column types: date, int, float, string
     session['date_columns'] = [[] for i in range(session['NUM_TABLES'])]
     session['int_columns'] = [[] for i in range(session['NUM_TABLES'])]
     session['float_columns'] = [[] for i in range(session['NUM_TABLES'])]
     session['string_columns'] = [[] for i in range(session['NUM_TABLES'])]
+
+    session['columns_to_group'] = [[] for i in range(len(session['sample_names']))]
 
     for key in request.form.keys():
         if "column_types" in key:
@@ -306,6 +307,8 @@ def set_column_data_type():
                 session['float_columns'][table_index].append(column_name)
             if int(request.form[key]) == 3:
                 session['string_columns'][table_index].append(column_name)
+
+                session['columns_to_group'][table_index].append(column_name)
 
     session['encode_step'] = 3
 
