@@ -1,3 +1,21 @@
+function draw_plots(table_index) {
+    console.log(table_index, '!!!');
+    // TODO: 
+    $.ajax({
+        type: "POST",
+        contentType: "application/json;charset=utf-8",
+        url: "collect_plot_data",
+        traditional: "true",
+        data: JSON.stringify({'table_index': table_index}),
+        dataType: "json",
+        success: function (data) {
+            draw(data.raw, "#rawGraph");
+            draw(data.encoded, "#encodedGraph");
+        }
+    });
+
+}
+
 function draw(data, tag_name) {
     // remove previous plot
     const myNode = document.getElementById(tag_name);
@@ -6,7 +24,8 @@ function draw(data, tag_name) {
             myNode.removeChild(myNode.lastChild);
         }
     }
-    
+
+    data = JSON.parse(data);
 
     var margin = {top: 50, right: 0, bottom: 400, left: 0}
     width = window.innerWidth - margin.left - margin.right // Use the window's width 
@@ -71,16 +90,16 @@ function draw(data, tag_name) {
     var legend_height = 0;
     var colors = ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56', "#69b3a2"];
     for (i=0; i < column_names.length; i++) {
-        var column_name = column_names[i]
+        var column_name = column_names[i];
         var dataset = d3.range(n).map(function(d) { return {"y": parseFloat(data[column_name][d]) } })
         // 9. Append the path, bind the data, and call the line generator 
         svg.append("path")
-        .datum(dataset) // 10. Binds data to the line 
-        .attr("fill", "none")
-        .attr("stroke", colors[i])
-        .attr("stroke-width", 1.5)
-        .attr("class", "line") // Assign a class for styling 
-        .attr("d", line); // 11. Calls the line generator 
+            .datum(dataset) // 10. Binds data to the line 
+            .attr("fill", "none")
+            .attr("stroke", colors[i])
+            .attr("stroke-width", 1.5)
+            .attr("class", "line") // Assign a class for styling 
+            .attr("d", line); // 11. Calls the line generator 
 
         // add legend
         svg.append("circle").attr("cx",0).attr("cy",legend_height).attr("r", 6).style("fill", colors[i])

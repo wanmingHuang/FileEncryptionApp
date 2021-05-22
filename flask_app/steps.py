@@ -11,4 +11,4 @@ explanations[0] = "select data type of each column"
 explanations[1] = "select columns to group in String conversion. Choose no columns if you would like to proceed to next step: adjust encoding level."
 
 # step 3: adjust encoding level
-explanations[2] = "adjust encoding level"
+explanations[2] = "adjust encoding level by adjusting the slider, 1 encodes column name', 2 encodes string values, 3 and above encodes float values"

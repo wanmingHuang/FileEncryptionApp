@@ -401,10 +401,14 @@ def adjust_encoding_level():
         # all_plot_column_flags.append(list(plot_column_flags.astype(np.int32)))
 
         data.append([utils.table2json(raw_data, True), utils.table2json(encoded_data, True)])
-    
+
+    # data for plot
+    session['plot_data'] = data
+
     # show tables and show plot
     return render_template('table_encoder2.html',
                             if_encode=app.config['IF_ENCODE'],
+                            explanation=explanations[session['encode_step'] - 2],
                             samples=session['samples'],
                             sample_names=session['sample_names'],
                             column_types=session['all_column_types'],
@@ -414,6 +418,34 @@ def adjust_encoding_level():
                             encode_step=4,
                             data=data
     )
+
+
+@app.route("/collect_plot_data", methods=["POST"])
+def collect_plot_data():
+    """
+        return data for plot, format is list
+        table 1: [raw, encoded],
+        table 2: [raw, encoded],
+        ...
+    """
+    table_index = int(json.loads(request.data)['table_index'])
+    table_index -= 1
+
+    # decide columns to plot
+    raw_table = utils.json2table(session['tables'][table_index])
+    encoded_table = utils.json2table(session['encoded_tables'][table_index])
+    raw_float_columns = session['float_columns'][table_index]
+    float_column_indexes = [raw_table.columns.tolist().index(item) for item in raw_float_columns]
+    encoded_float_columns = [encoded_table.columns.tolist()[index] for index in float_column_indexes]
+
+
+    raw_data = utils.table2json(raw_table[raw_float_columns], True)
+    encoded_data = utils.table2json(encoded_table[encoded_float_columns], True)
+
+    # print(raw_data['TARGET'])
+    # print(raw_data['VAR1'])
+
+    return {'raw': raw_data, 'encoded': encoded_data}
 
 
 @app.after_request
