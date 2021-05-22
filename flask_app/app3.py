@@ -117,9 +117,14 @@ def decrypt_data():
             return render_template('decryption.html')
         else:
             session['sample_name_extension'] = sample_names[0].split(".")[-1]
-            decrypted_file_name = encryption.decrypt_file(files[0].read(), sample_name_extension=session['sample_name_extension'], key=app.config['key'])
-            app.config['DOWNLOAD_FILE_PATH'] = decrypted_file_name
-            return render_template('decryption.html', downloadable=True)
+            try:
+                decrypted_file_name = encryption.decrypt_file(files[0].read(), sample_name_extension=session['sample_name_extension'], key=app.config['key'])
+                app.config['DOWNLOAD_FILE_PATH'] = decrypted_file_name
+                return render_template('decryption.html', downloadable=True)
+            except Exception as e:
+                print(e)
+                flash('Error: ' + str(e) + '. Please upload the correct file.')
+                return render_template('decryption.html')
 
 
 @app.route('/decode_tables', methods=['GET','POST'])
