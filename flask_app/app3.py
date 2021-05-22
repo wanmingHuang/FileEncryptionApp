@@ -21,10 +21,6 @@ import ops
 import encryption
 from steps import explanations
 
-UPLOAD_FOLDER = 'uploaded_files/'
-ENCODE_FOLDER = 'encoded_files/'
-DECODE_FOLDER = 'decoded_files/'
-
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # maxinum size of uploaded file
@@ -40,6 +36,7 @@ app.config['SESSION_PERMANENT'] = False
 
 server_session = Session(app)
 server_session.permanent = False
+
 
 def allowed_file(filename):
     if app.config['IF_ENCODE'] is True:
@@ -84,20 +81,27 @@ def encrypt_data():
     """
         This is a standalone function that encrypts data
     """
-    app.config['PAGE'] = 'encrypt_data'
+    session['PAGE'] = 'encrypt_data'
     if request.method == 'GET':
         return render_template('encryption.html')
     else:
         app.config['IF_ENCODE'] = False
         # assume only 1 file is uploaded
-        process_uploaded_files()
-        if app.config['key'] is None:
+        files, sample_names = process_uploaded_files()
+        if session['key'] is None:
             flash('Pleae upload a key to encrypt')
             return render_template('encryption.html')
         else:
-            encryption.encrypt_file(app.config['FILE_PATH'][0], key=app.config['key'])
-            app.config['DOWNLOAD_FILE_PATH'] = app.config['FILE_PATH'][0]
-            return render_template('encryption.html', downloadable=True)
+            session['sample_name_extension'] = sample_names[0].split(".")[-1]
+            try:
+                encrypted_file_name = encryption.encrypt_file(files[0].read(), sample_name_extension=session['sample_name_extension'], key=session['key'])
+                session['DOWNLOAD_FILE_PATH'] = encrypted_file_name
+                flash('File is successfully encrypted. You may proceed to download.')
+                return render_template('encryption.html', downloadable=True)
+            except Exception as e:
+                print(e)
+                flash('Error: ' + str(e) + '. Please upload the correct file.')
+                return render_template('encryption.html')
 
 
 @app.route('/decrypt_data', methods=['GET', 'POST'])
@@ -105,21 +109,22 @@ def decrypt_data():
     """
         This is a standalone function that encrypts data
     """
-    app.config['PAGE'] = 'decrypt_data'
+    session['PAGE'] = 'decrypt_data'
     if request.method == 'GET':
         return render_template('decryption.html')
     else:
         app.config['IF_ENCODE'] = False
         # assume only 1 file is uploaded
         files, sample_names = process_uploaded_files()
-        if app.config['key'] is None:
+        if session['key'] is None:
             flash('Pleae upload a key to decrypt')
             return render_template('decryption.html')
         else:
             session['sample_name_extension'] = sample_names[0].split(".")[-1]
             try:
-                decrypted_file_name = encryption.decrypt_file(files[0].read(), sample_name_extension=session['sample_name_extension'], key=app.config['key'])
-                app.config['DOWNLOAD_FILE_PATH'] = decrypted_file_name
+                decrypted_file_name = encryption.decrypt_file(files[0].read(), sample_name_extension=session['sample_name_extension'], key=session['key'])
+                session['DOWNLOAD_FILE_PATH'] = decrypted_file_name
+                flash('File is successfully decrypted. You may proceed to download.')
                 return render_template('decryption.html', downloadable=True)
             except Exception as e:
                 print(e)
@@ -129,26 +134,28 @@ def decrypt_data():
 
 @app.route('/decode_tables', methods=['GET','POST'])
 def decode_tables():
-    app.config['PAGE'] = 'decode_tables'
+    session['PAGE'] = 'decode_tables'
     app.config['IF_ENCODE'] = False
-    if 'key' not in app.config.keys():
-        app.config['key'] = None
+    if 'key' not in session.keys():
+        session.config['key'] = None
     if request.method == 'GET':
         return render_template('table_decoder.html',
                                 if_encode=app.config['IF_ENCODE'],
                                 encode_step=1)
     else:
-        sample_names = process_uploaded_files()
+        # assume only 1 zip file is uploaded
+        files, sample_names = process_uploaded_files()
         try:
-            decoded_tables, decode_file_paths, download_file_path = decoder.decode_file(
-                app.config['FILE_PATH'][0], app.config['DECODE_FOLDER'], app.config['key'])
+            decoded_tables, decode_file_paths, download_file_path, session['TEMP_DIR'] = decoder.decode_file(
+                files[0], session['key'])
         except Exception as e:
             flash('Error: ' + str(e))
             return render_template('table_decoder.html',
                                 if_encode=app.config['IF_ENCODE'],
                                 encode_step=1)
 
-        app.config['DOWNLOAD_FILE_PATH'] = download_file_path
+        session['DOWNLOAD_FILE_PATH'] = download_file_path
+        session['sample_name_extension'] = '.zip'
 
         if decoded_tables is not None: # i.e. a decoded csv
             # extract sample from table to show on the webpage
@@ -195,6 +202,7 @@ def decode_reports():
 
 @app.route('/', methods=['GET','POST'])
 def root():
+    session.clear()
     session.permanent = False
     session['ROLE'] = None
     session['key'] = None
@@ -469,7 +477,7 @@ def download():
         session['TEMP_DIR'] = tmpdirname
         attachment_filename = "encoded_file" + '.zip'
     else: # download decoded files
-        zipfilepath = app.config['DOWNLOAD_FILE_PATH']
+        zipfilepath = session['DOWNLOAD_FILE_PATH']
         session['TEMP_DIR'] = zipfilepath
         attachment_filename = "decoded_file" + "." + session['sample_name_extension']
 
@@ -483,9 +491,9 @@ def upload_key():
         key = None
     else:
         key = request.files['file'].read()
-        app.config['key'] = key
+        session['key'] = key
         flash("key is uploaded")
-    return redirect(app.config['PAGE'])
+    return redirect(session['PAGE'])
 
 
 if __name__ == "__main__":

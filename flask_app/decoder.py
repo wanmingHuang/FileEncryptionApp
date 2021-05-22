@@ -5,6 +5,7 @@ import pickle
 import encryption
 from zipfile import ZipFile
 import time
+import uuid
 
 
 def process_mapping_file(row_mapping_files, column_mapping_file):
@@ -95,12 +96,15 @@ def read_mapping(filenames, target_dir):
     return mapping
 
 
-def decode_file(zipfilename, target_dir, key):
+def decode_file(zipfile, key):
     # unzip the directory for 1. zipped csv; 2. mapping files
-    unzip_file(zipfilename, target_dir)
 
-    unzipped_dir = [name for name in os.listdir(target_dir) if os.path.isdir(os.path.join(target_dir, name)) and "__" not in name][0]
-    target_dir = os.path.join(target_dir, unzipped_dir)
+    # unzip to a temperary directory
+    root_dir = str(uuid.uuid4())
+    unzip_file(zipfile, root_dir)
+
+    unzipped_dir = [name for name in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, name)) and "__" not in name][0]
+    target_dir = os.path.join(root_dir, unzipped_dir)
 
     # assume 1 zip file for csvs
     mapping_files = {}
@@ -119,7 +123,7 @@ def decode_file(zipfilename, target_dir, key):
     # unzip the zip for tables
     unzip_decrypt(os.path.join(target_dir, zipfilename), target_dir, key)
 
-    table_dir = [name for name in os.listdir(target_dir) if os.path.isdir(name)][0]
+    table_dir = [name for name in os.listdir(target_dir) if os.path.isdir(os.path.join(target_dir, name))][0]
     target_dir = os.path.join(target_dir, table_dir)
 
     decoded_tables = []
@@ -133,12 +137,11 @@ def decode_file(zipfilename, target_dir, key):
         else:
             mapping = read_mapping(mapping_files[sample_name], os.path.join(target_dir, "../"))
 
-        encoded_file_name = os.path.join(target_dir, 'encoded_'+sample_name+'.csv')
+        encoded_file_name = os.path.join(target_dir, sample_name+'.csv')
         table_data = decode_table(encoded_file_name, mapping)
 
         # save decoded table to directory
         table_data.to_csv(os.path.join(target_dir, "../", "decoded_{}.csv".format(sample_name)), index=None)
-        # return table_data, os.path.join(target_dir, "../", "decoded_{}.csv".format(sample_name))
 
         decoded_tables.append(table_data)
         file_paths.append(os.path.join(target_dir, "../", "decoded_{}.csv".format(sample_name)))
@@ -149,7 +152,7 @@ def decode_file(zipfilename, target_dir, key):
         zipObj.write(file_path)
     zipObj.close()
     
-    return decoded_tables, file_paths, os.path.join(target_dir, '../', 'decoded_tables.zip')
+    return decoded_tables, file_paths, os.path.join(target_dir, '../', 'decoded_tables.zip'), root_dir
 
 
 if __name__ == "__main__":
